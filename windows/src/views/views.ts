@@ -24,7 +24,7 @@ import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
-import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
+import { buildSpotifyCard, buildSpotifyPill, buildSoloMediaCard, type SpotifyPillHost } from "./spotify";
 import { isMediaPill, playerForPill } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
@@ -493,18 +493,26 @@ function buildOverview(actions: ViewActions): ViewHost {
       shownSelection = State.cardSelection;
 
       const others = State.otherTasks.slice(0, 4);
-      const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
+      const solo = others.length === 1;
+      const pillKey = `${solo ? "solo" : "grid"}~${others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|")}`;
       if (pillKey !== pillIds) {
         pillIds = pillKey;
+        pills.classList.toggle("solo", solo);
         clear(pills);
         mediaPills.length = 0;
         for (const t of others) {
-          if (isMediaPill(t.id)) {
+          if (solo && isMediaPill(t.id)) {
+            const p = buildSoloMediaCard(t, () => actions.setFocus(t.id));
+            mediaPills.push(p);
+            pills.append(p.el);
+          } else if (isMediaPill(t.id)) {
             const p = buildSpotifyPill(t, () => actions.setFocus(t.id));
             mediaPills.push(p);
             pills.append(p.el);
           } else {
-            pills.append(buildPill(t, actions));
+            const pill = buildPill(t, actions);
+            if (solo) pill.classList.add("solo-agent");
+            pills.append(pill);
           }
         }
         pruneMiniBots();

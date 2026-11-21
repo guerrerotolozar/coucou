@@ -167,6 +167,82 @@ export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPil
   return { el: pill, sync };
 }
 
+/**
+ * Compact full-drawer card used in the right column when only one secondary
+ * pill is active and it belongs to a media player (Spotify or YouTube Music).
+ */
+export function buildSoloMediaCard(task: AgentTask, onTap: () => void): SpotifyPillHost {
+  const player = playerForPill(task.id);
+  const store = mediaStore(player);
+  const color = task.color;
+  const mini = createMiniBot(task, 30, () => store.state.playing && store.state.track != null);
+  const artImg = h("img", { alt: "", draggable: "false" }) as HTMLImageElement;
+  const art = h("div", { class: "solo-media-art" }, mini, artImg);
+  art.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.spotifyOpen(player);
+  });
+
+  const title = h("div", { class: "solo-media-title", text: task.name });
+  const sub = h("div", { class: "solo-media-sub" });
+  const prevBtn = pillButton(color, ICONS.backward, () => void Bridge.spotifyControl("previous", undefined, player));
+  const playBtn = pillButton(color, ICONS.play, () => togglePlay(player));
+  const nextBtn = pillButton(color, ICONS.forward, () => void Bridge.spotifyControl("next", undefined, player));
+  const controls = h("div", { class: "solo-media-controls" }, prevBtn, playBtn, nextBtn);
+
+  const body = h("div", { class: "solo-media-body" }, title, sub, controls);
+  const card = h("div", { class: "pill solo-media", onclick: onTap }, art, body);
+  card.style.borderColor = `${color}2e`;
+  let playing: boolean | null = null;
+
+  const sync = () => {
+    const s = store.state;
+    const track = s.track;
+    const current = State.tasks.find((x) => x.id === task.id);
+    const appName = current?.name ?? task.name;
+    const cover = track ? currentArtwork(s, player) : "";
+    if (cover) {
+      if (artImg.getAttribute("src") !== cover) artImg.setAttribute("src", cover);
+      art.classList.add("has-art");
+    } else {
+      art.classList.remove("has-art");
+      artImg.removeAttribute("src");
+    }
+
+    const wantTitle = track ? (isAd(track) ? t("Advertisement") : track.title) : appName;
+    if (title.textContent !== wantTitle) title.textContent = wantTitle;
+
+    const wantSub = track
+      ? (track.artist || appName)
+      : ((s.installed || s.running) ? t("Not playing") : t(pillDefinition(task.id)?.subtitle ?? N_("Integration")));
+    if (sub.textContent !== wantSub) sub.textContent = wantSub;
+
+    controls.style.display = track ? "flex" : "none";
+    if (playing !== s.playing) {
+      playing = s.playing;
+      clear(playBtn);
+      playBtn.append(svg(s.playing ? ICONS.pause : ICONS.play, 8));
+    }
+    prevBtn.title = t("Previous");
+    playBtn.title = s.playing ? t("Pause") : t("Play");
+    nextBtn.title = t("Next");
+  };
+
+  card.addEventListener("mouseenter", () => {
+    card.style.background = `${color}22`;
+    card.style.borderColor = `${color}8c`;
+    card.style.boxShadow = `0 2px 10px ${color}40`;
+  });
+  card.addEventListener("mouseleave", () => {
+    card.style.background = "";
+    card.style.borderColor = `${color}2e`;
+    card.style.boxShadow = "";
+  });
+
+  sync();
+  return { el: card, sync };
+}
+
 // ── Card (overview left card) ─────────────────────────────────────────────────
 
 /**

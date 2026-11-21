@@ -784,6 +784,97 @@ body {
   padding: 0 8px;
 }
 
+.pills.solo {
+  grid-template-columns: 1fr;
+  grid-auto-rows: 1fr;
+  align-content: stretch;
+  padding: 8px;
+}
+
+.pill.solo-agent {
+  height: 100%;
+  border-radius: 16px;
+  padding: 0 14px;
+}
+
+.pill.solo-agent .lbl {
+  font-size: 12px;
+  padding: 0 14px 0 44px;
+}
+
+.pill.solo-media {
+  height: 100%;
+  border-radius: 16px;
+  padding: 8px 12px;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.pill.solo-media:hover {
+  transform: none;
+}
+
+.solo-media-art {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.solo-media-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.solo-media-art.has-art img {
+  display: block;
+}
+
+.solo-media-art.has-art .mini {
+  display: none;
+}
+
+.solo-media-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.solo-media-title {
+  font: 600 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.solo-media-sub {
+  font: 400 11px var(--font);
+  color: var(--dim-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.solo-media-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 .pill {
   position: relative;
   height: 28px;
