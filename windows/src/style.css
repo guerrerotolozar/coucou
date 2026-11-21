@@ -176,6 +176,12 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+#mini-grid.solo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Compact Claude plan gauge, next to the agent dots in the compact island. */
 #compact-plan {
   --plan: #6b7079;

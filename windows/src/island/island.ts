@@ -15,7 +15,9 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { SPOTIFY_ID, YTMUSIC_ID, activeMusicTrack, islandDances } from "../core/spotify";
+import {
+  SPOTIFY_ID, YTMUSIC_ID, activeMusicTrack, isMediaPill, islandDances, mediaStore, playerForPill,
+} from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -1457,7 +1459,14 @@ export class Island {
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
-    const dancing = islandDances({
+    // In compact mode, when a media pill (Spotify / YouTube Music) sits on the
+    // right drawer while the main bot is another agent, let the music bot wear
+    // the headphones and dance instead of taking over the primary agent Mochi.
+    const mediaInRight =
+      State.mode === "compact" &&
+      !isMediaPill(State.focusTask?.id ?? "") &&
+      State.otherTasks.slice(0, 4).some((t) => isMediaPill(t.id));
+    const dancing = !mediaInRight && islandDances({
       music: State.spotifyPlaying,
       state: State.effectiveState,
       mode: State.mode,
@@ -1562,12 +1571,30 @@ export class Island {
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
-      const key = others.map((t) => t.id).join("|");
+      const solo = others.length === 1;
+      const key = `${solo ? "solo" : "grid"}~${others.map((t) => t.id).join("|")}`;
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
+        this.miniGrid.classList.toggle("solo", solo);
         this.miniGrid.replaceChildren();
+        const size = solo ? 22 : 13;
         for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
+          if (isMediaPill(t.id)) {
+            const store = mediaStore(playerForPill(t.id));
+            this.miniGrid.append(
+              createMiniBot(
+                t,
+                size,
+                () => store.state.playing && store.state.track != null,
+                () =>
+                  State.settings.headphonesWithMusic && store.state.playing && store.state.track != null
+                    ? "headphones"
+                    : "none",
+              ),
+            );
+          } else {
+            this.miniGrid.append(createMiniBot(t, size));
+          }
         }
         pruneMiniBots();
       }

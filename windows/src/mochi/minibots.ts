@@ -2,6 +2,7 @@
 // Each canvas owns a BotEngine; the island's frame loop ticks every live one.
 
 import { BotEngine, hexToRGB } from "./engine";
+import type { Outfit } from "./wardrobe";
 import type { AgentTask } from "../core/state";
 
 interface MiniBot {
@@ -11,6 +12,8 @@ interface MiniBot {
   taskId: string;
   /** Asked every frame: whether this one dances (the music pill's, MiniBotCanvasView). */
   dancing?: () => boolean;
+  /** Asked every frame: optional outfit override (e.g. headphones on the solo media bot). */
+  outfit?: () => Outfit;
 }
 
 const live = new Map<HTMLCanvasElement, MiniBot>();
@@ -24,7 +27,12 @@ const live = new Map<HTMLCanvasElement, MiniBot>();
  * `.frame(width: 22)`. Sizing the canvas itself to `bodySize` would shrink the
  * whole drawing to 60 %, which is what used to happen.
  */
-export function createMiniBot(task: AgentTask, bodySize: number, dancing?: () => boolean): HTMLElement {
+export function createMiniBot(
+  task: AgentTask,
+  bodySize: number,
+  dancing?: () => boolean,
+  outfit?: () => Outfit,
+): HTMLElement {
   const slot = document.createElement("span");
   slot.className = "mini";
   slot.style.width = `${bodySize}px`;
@@ -50,7 +58,7 @@ export function createMiniBot(task: AgentTask, bodySize: number, dancing?: () =>
     engine.eyeOverrideUntil = Number.POSITIVE_INFINITY;
   }
 
-  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId: task.id, dancing });
+  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId: task.id, dancing, outfit });
   return slot;
 }
 
@@ -80,6 +88,7 @@ export function tickMiniBots(dt: number) {
     const ctx = mb.canvas.getContext("2d");
     if (!ctx) continue;
     mb.engine.setDancing(mb.dancing?.() ?? false);
+    if (mb.outfit) mb.engine.setOutfit(mb.outfit(), false);
     mb.engine.update(dt);
     // Sized at creation: the island may have moved to a monitor of another scale.
     const px = Math.round(mb.cssSize * dpr);
