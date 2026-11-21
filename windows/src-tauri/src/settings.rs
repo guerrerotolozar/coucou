@@ -124,6 +124,8 @@ pub struct Settings {
     pub agy_approvals_enabled: bool,
     /// Third-party agents registered by the user (Issue #592).
     pub custom_agents: Vec<CustomAgent>,
+    /// Mochi puts on headphones while he dances to music. Off by default.
+    pub headphones_with_music: bool,
 }
 
 /// A third-party agent registered by the user (Issue #592).
@@ -207,6 +209,7 @@ impl Default for Settings {
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
             custom_agents: Vec::new(),
+            headphones_with_music: false,
         }
     }
 }
@@ -511,7 +514,8 @@ mod tests {
   "showClock": true,
   "closedIsland": "music",
   "agyApprovalsEnabled": true,
-  "customAgents": [{"id": "deepseek", "name": "DeepSeek Work"}]
+  "customAgents": [{"id": "deepseek", "name": "DeepSeek Work"}],
+  "headphonesWithMusic": true
 }"##;
 
     fn custom() -> Value {
@@ -1063,6 +1067,7 @@ mod tests {
                 "closedIsland",
                 "agyApprovalsEnabled",
                 "customAgents",
+                "headphonesWithMusic",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

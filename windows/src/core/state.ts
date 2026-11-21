@@ -109,6 +109,8 @@ export interface Settings {
   showClock: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
   closedIsland: string;
+  /** Mochi puts on headphones while he dances to music (Spotify or Now Playing). */
+  headphonesWithMusic: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -184,6 +186,7 @@ export const DEFAULT_SETTINGS: Settings = {
   alertsFromAllPills: false,
   showClock: false,
   closedIsland: "mochi",
+  headphonesWithMusic: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
