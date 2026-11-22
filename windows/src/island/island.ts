@@ -294,11 +294,7 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
-      hideIsland: () => {
-        State.paused = true;
-        void Bridge.setPaused(true);
-        this.fsm.forceHidden();
-      },
+      hideIsland: () => this.hideIsland(),
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
         if (parseOutfit(State.settings.mochiOutfit) === selection) return;
@@ -601,6 +597,21 @@ export class Island {
 
   reveal() {
     this.fsm.reveal();
+  }
+
+  /** Pauses and smoothly retracts the island/notch off screen (Ctrl+Alt+Up / eyeOff). */
+  hideIsland() {
+    State.paused = true;
+    void Bridge.setPaused(true);
+    if (State.mode === "hidden") {
+      this.updateClosed();
+      this.animateGeometry(true);
+      this.updateWindowCollapsed();
+      this.scheduleClosedLife();
+      State.notify();
+    } else {
+      this.fsm.forceHidden();
+    }
   }
 
   /** Music started playing: the compact island, without the peek sound (musicReveal). */

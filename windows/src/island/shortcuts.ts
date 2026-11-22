@@ -20,6 +20,8 @@ export interface ShortcutHost {
   alert(view: IslandViewName): void;
   setView(view: IslandViewName): void;
   collapse(): void;
+  hideIsland(): void;
+  reveal(): void;
   emote(name: BotEmoteName): void;
   setPinned(on: boolean): void;
   /** Gives the island the keyboard, so the in-island keys work (Mac: makeKey). */
@@ -129,6 +131,19 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       }
       if (!State.mochiOnDesktop) resume();
       host.flyOutOrHome();
+      break;
+
+    case "hideIsland":
+      host.hideIsland();
+      break;
+
+    case "showIsland":
+      resume();
+      host.reveal();
+      break;
+
+    case "openSettings":
+      void Bridge.openSettingsWindow();
       break;
 
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and

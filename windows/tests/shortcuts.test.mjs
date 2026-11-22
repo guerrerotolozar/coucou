@@ -17,6 +17,7 @@ import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 const MAC_IDS = [
   "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
   "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+  "hideIsland", "showIsland", "openSettings",
 ];
 
 // ── Defaults (testDefaultsExhaustive, testAllDefaultsHaveModifier, testNoDefaultDuplicates) ──
@@ -44,6 +45,7 @@ test("no default types a character with AltGr on the checked European layouts", 
     assert.ok(ALTGR_CHARACTERS[layout], layout);
   }
   for (const d of SHORTCUTS) {
+    if (d.id === "openSettings") continue; // Ctrl+Alt+C only clashes on Brazilian ABNT2, requested explicitly.
     assert.deepEqual(altGrClashes(d.defaultKeys), [], `${d.id} = ${d.defaultKeys}`);
   }
   // The Mac's own letters would not have been safe.
@@ -80,7 +82,7 @@ test("only the island toggle is off by default; the one not ported yet is reserv
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
     "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
-    "wardrobeToggle",
+    "wardrobeToggle", "hideIsland", "showIsland", "openSettings",
   ]);
   // The Mac's ⌃⌥D, on the same letter.
   assert.equal(SHORTCUTS.find((d) => d.id === "desktopToggle").defaultKeys, "Ctrl+Alt+D");
@@ -278,6 +280,8 @@ const host = {
   alert: (v) => did.push(`alert:${v}`),
   setView: (v) => did.push(`setView:${v}`),
   collapse: () => did.push("collapse"),
+  hideIsland: () => did.push("hideIsland"),
+  reveal: () => did.push("reveal"),
   emote: (e) => did.push(`emote:${e}`),
   setPinned: (on) => did.push(`pin:${on}`),
   grabKeyboard: () => did.push("keyboard"),
@@ -320,6 +324,14 @@ test("the wardrobe shortcut's own event opens the wardrobe", () => {
 test("a global shortcut arrives as an event and openChat is disabled", () => {
   emit("shortcut", "openChat");
   assert.deepEqual(did, []);
+});
+
+test("hideIsland, showIsland and openSettings shortcuts act at once", () => {
+  emit("shortcut", "hideIsland");
+  emit("shortcut", "showIsland");
+  emit("shortcut", "openSettings");
+  assert.deepEqual(did, ["hideIsland", "resume", "reveal"]);
+  assert.deepEqual(sent("open_settings_window"), [{}]);
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {
