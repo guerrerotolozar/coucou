@@ -46,7 +46,7 @@ beforeEach(() => {
   State.pendingApproval = null;
   State.approvalQueue = [];
   State.focusBeforeApproval = null;
-  State.settings = { ...DEFAULT_SETTINGS };
+  State.settings = { ...DEFAULT_SETTINGS, closedIsland: "hidden" };
   State.loadIntegrationTasks();
 });
 

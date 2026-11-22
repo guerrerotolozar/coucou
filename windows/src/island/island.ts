@@ -896,9 +896,9 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
-  /** The closed island stays on screen (anything but "hidden"). */
+  /** The closed island stays on screen (anything but "hidden"), unless paused/hidden manually. */
   private get closedShows(): boolean {
-    return closedIsland(State.settings.closedIsland) !== "hidden";
+    return !State.paused && closedIsland(State.settings.closedIsland) !== "hidden";
   }
 
   private targetSize(): { w: number; h: number; r: number } {
@@ -993,7 +993,7 @@ export class Island {
   private scheduleClosedLife() {
     if (this.closedLife != null) window.clearTimeout(this.closedLife);
     this.closedLife = null;
-    if (State.mode !== "hidden" || closedIsland(State.settings.closedIsland) !== "mochi") {
+    if (State.mode !== "hidden" || State.paused || closedIsland(State.settings.closedIsland) !== "mochi") {
       this.closedLook = { x: 0, y: 0 };
       return;
     }
@@ -1413,7 +1413,7 @@ export class Island {
   private updateBotTargets() {
     let p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
     // The closed island with Mochi in it, as on a Mac without a notch.
-    if (State.mode === "hidden" && closedIsland(State.settings.closedIsland) === "mochi") {
+    if (State.mode === "hidden" && !State.paused && closedIsland(State.settings.closedIsland) === "mochi") {
       p = { cx: this.width.value / 2, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
     }
     this.botCx.target = p.cx;

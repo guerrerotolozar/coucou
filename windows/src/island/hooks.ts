@@ -16,6 +16,7 @@ import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 import { Launch } from "../core/launch";
+import { closedIsland } from "../core/closed";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -399,7 +400,7 @@ function handleHook(island: Island, payload: HookPayload) {
       if (isAlert) island.setView(view);
     } else if (isAlert) {
       island.alert(view, { auto: true });
-    } else if (State.mode === "hidden") {
+    } else if (State.mode === "hidden" && closedIsland(State.settings.closedIsland) === "hidden") {
       island.reveal();
     }
   };

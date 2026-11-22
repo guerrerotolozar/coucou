@@ -61,9 +61,7 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       break;
 
     case "openChat":
-      resume();
-      host.alert("prompt");
-      host.grabKeyboard();
+      // Chat disabled on this personal build.
       break;
 
     case "goToAlert": {
