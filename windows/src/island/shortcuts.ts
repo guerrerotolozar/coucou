@@ -110,6 +110,7 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
         cyclePill(State.tasks.map((t) => t.id), State.focusTask?.id ?? null, action === "nextPill" ? 1 : -1),
         true,
       );
+      host.grabKeyboard();
       break;
 
     case "muteToggle": {

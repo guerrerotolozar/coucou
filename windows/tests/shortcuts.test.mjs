@@ -474,7 +474,7 @@ test("next and previous pill wrap around and open the overview", () => {
   assert.equal(State.focusId, ids[ids.length - 1]);
   runGlobalShortcut(host, "nextPill", resume);
   assert.equal(State.focusId, ids[0]);
-  assert.deepEqual(did, ["resume", "alert:overview", "resume", "alert:overview"]);
+  assert.deepEqual(did, ["resume", "alert:overview", "keyboard", "resume", "alert:overview", "keyboard"]);
 });
 
 test("mute flips the sound, saves it, and Mochi reacts", () => {

@@ -689,6 +689,18 @@ export class Island {
   /** No click comes with a keyboard shortcut, so the island takes the keyboard outright. */
   grabKeyboard() {
     void Bridge.grabKeyboard();
+    this.islandEl.tabIndex = -1;
+    this.islandEl.style.outline = "none";
+    const focusDom = () => {
+      if (State.mode !== "expanded") return;
+      window.focus();
+      const view = State.view;
+      if (TYPING_VIEWS.has(view)) this.views.get(view)?.focus?.();
+      else this.islandEl.focus({ preventScroll: true });
+    };
+    focusDom();
+    window.setTimeout(focusDom, 60);
+    window.setTimeout(focusDom, 160);
   }
 
   /** The desktop shortcut needs a desktop Mochi: none on GNOME's Wayland. */
