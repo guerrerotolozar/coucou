@@ -11,11 +11,15 @@ import { Bridge, onEvent } from "../core/bridge";
 import type { BotEmoteName, IslandViewName } from "../core/layout";
 import { cyclePill, islandKeyAction, navigate, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
 import { Sound } from "../core/sound";
-import { isMediaPill, playerForPill } from "../core/spotify";
+import { isMediaPill, mediaStore, playerForPill, spotifyPosition } from "../core/spotify";
 import { State } from "../core/state";
 import { togglePlay } from "../views/spotify";
 
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
+const DOUBLE_TAP_MS = 450;
+const RESTART_THRESHOLD_S = 5;
+let lastMediaRightAt = 0;
+let lastMediaLeftAt = 0;
 
 /** What the shortcuts need from the island. */
 export interface ShortcutHost {
@@ -161,6 +165,38 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       }
       break;
 
+    case "mediaRight":
+      if (State.mode === "expanded" && State.view === "overview" && State.focusTask && isMediaPill(State.focusTask.id)) {
+        const now = Date.now();
+        if (now - lastMediaRightAt <= DOUBLE_TAP_MS) {
+          lastMediaRightAt = 0;
+          void Bridge.spotifyControl("next", undefined, playerForPill(State.focusTask.id));
+        } else {
+          lastMediaRightAt = now;
+        }
+      }
+      break;
+
+    case "mediaLeft":
+      if (State.mode === "expanded" && State.view === "overview" && State.focusTask && isMediaPill(State.focusTask.id)) {
+        const now = Date.now();
+        if (now - lastMediaLeftAt <= DOUBLE_TAP_MS) {
+          lastMediaLeftAt = 0;
+          const player = playerForPill(State.focusTask.id);
+          const store = mediaStore(player);
+          if (spotifyPosition(store.state, now) > RESTART_THRESHOLD_S) {
+            store.state = { ...store.state, position: 0, positionAt: now };
+            State.notify();
+            void Bridge.spotifyControl("seek", 0, player);
+          } else {
+            void Bridge.spotifyControl("previous", undefined, player);
+          }
+        } else {
+          lastMediaLeftAt = now;
+        }
+      }
+      break;
+
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
     // attachFrontWindow isn't in this version.
     default:
@@ -226,21 +262,21 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
     host.wardrobeAnywhere();
   });
 
-  let mediaEnterOn = false;
-  const syncMediaEnter = (focused = true) => {
+  let mediaKeysOn = false;
+  const syncMediaKeys = (focused = true) => {
     const want =
       focused &&
       State.mode === "expanded" &&
       State.view === "overview" &&
       State.focusTask != null &&
       isMediaPill(State.focusTask.id);
-    if (want === mediaEnterOn) return;
-    mediaEnterOn = want;
-    void Bridge.setMediaEnter(want);
+    if (want === mediaKeysOn) return;
+    mediaKeysOn = want;
+    void Bridge.setMediaKeys(want);
   };
-  State.subscribe(() => syncMediaEnter());
-  window.addEventListener("blur", () => syncMediaEnter(false));
-  window.addEventListener("focus", () => syncMediaEnter(true));
+  State.subscribe(() => syncMediaKeys());
+  window.addEventListener("blur", () => syncMediaKeys(false));
+  window.addEventListener("focus", () => syncMediaKeys(true));
 
   // Capture phase: the chat field stops its own key events from bubbling.
   window.addEventListener(

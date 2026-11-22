@@ -342,9 +342,12 @@ test("hideIsland, showIsland and openSettings shortcuts step cleanly", () => {
   assert.deepEqual(sent("open_settings_window"), [{}]);
 });
 
-test("mediaPlayPause shortcut pauses/resumes when expanded on overview with a media pill focused", async () => {
+test("media keys (Space, double Right, double Left) control playback when expanded on media pill", async () => {
   const { YTMUSIC_ID, YTMusic } = await import("../src/core/spotify.ts");
-  YTMusic.state = { running: true, playing: true, shuffle: false, repeat: false, position: 0, track: null };
+  YTMusic.state = {
+    running: true, playing: true, shuffle: false, repeat: false,
+    position: 20, positionAt: Date.now(), track: { id: "t1", title: "Song", artist: "Art", album: "", duration: 180, artUrl: null },
+  };
   State.tasks = [{
     id: YTMUSIC_ID, name: "YouTube Music", color: "#FF0000", state: "idle",
     steps: [], pillBadge: null, source: "integration", isIntegration: true,
@@ -353,13 +356,31 @@ test("mediaPlayPause shortcut pauses/resumes when expanded on overview with a me
   State.mode = "expanded";
   State.view = "overview";
   State.setFocus(YTMUSIC_ID);
-  assert.deepEqual(sent("set_media_enter"), [{ active: true }]);
+  assert.deepEqual(sent("set_media_keys"), [{ active: true }]);
+
   emit("shortcut", "mediaPlayPause");
   assert.equal(YTMusic.state.playing, false);
-  assert.deepEqual(sent("ytmusic_control"), [{ action: "playPause", value: null }]);
+
+  // Double Right -> next track
+  emit("shortcut", "mediaRight");
+  emit("shortcut", "mediaRight");
+
+  // Double Left when > 5s -> seek 0, then Double Left again at 0s -> previous track
+  emit("shortcut", "mediaLeft");
+  emit("shortcut", "mediaLeft");
+  emit("shortcut", "mediaLeft");
+  emit("shortcut", "mediaLeft");
+
+  assert.deepEqual(sent("ytmusic_control"), [
+    { action: "playPause", value: null },
+    { action: "next", value: null },
+    { action: "seek", value: 0 },
+    { action: "previous", value: null },
+  ]);
+
   State.mode = "compact";
   State.notify();
-  assert.deepEqual(sent("set_media_enter"), [{ active: true }, { active: false }]);
+  assert.deepEqual(sent("set_media_keys"), [{ active: true }, { active: false }]);
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {

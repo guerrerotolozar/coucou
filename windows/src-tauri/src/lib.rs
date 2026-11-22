@@ -219,8 +219,8 @@ fn grab_keyboard(app: AppHandle) {
 }
 
 #[tauri::command]
-fn set_media_enter(app: AppHandle, active: bool) {
-    shortcuts::set_media_enter(&app, active);
+fn set_media_keys(app: AppHandle, active: bool) {
+    shortcuts::set_media_keys(&app, active);
 }
 
 #[tauri::command]
@@ -968,7 +968,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             grab_keyboard,
-            set_media_enter,
+            set_media_keys,
             reposition,
             fit_zoom,
             hub_shown,
