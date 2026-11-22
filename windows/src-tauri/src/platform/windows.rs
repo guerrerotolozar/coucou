@@ -414,7 +414,11 @@ pub fn grab_keyboard(win: &WebviewWindow) {
     set_activating(win, true);
 }
 
-/// Temporarily allow activation so a text field inside the island can be typed in.
+/// Last foreground window before Coucou took keyboard focus, so collapsing returns focus cleanly.
+static PREV_FG_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+
+/// Temporarily allow activation so a text field or focused card inside the island can be used,
+/// and return foreground focus to the previous window when the island folds.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let w = win.clone();
     let _ = win.run_on_main_thread(move || {
@@ -428,8 +432,20 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
             });
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
             if activating {
+                let fg = GetForegroundWindow();
+                if !fg.0.is_null() && fg != hwnd {
+                    PREV_FG_HWND.store(fg.0 as isize, std::sync::atomic::Ordering::Relaxed);
+                }
                 bring_hwnd_to_foreground(hwnd);
                 let _ = w.set_focus();
+            } else if GetForegroundWindow() == hwnd {
+                let prev = PREV_FG_HWND.swap(0, std::sync::atomic::Ordering::Relaxed);
+                if prev != 0 {
+                    let prev_hwnd = HWND(prev as *mut _);
+                    if IsWindow(Some(prev_hwnd)).as_bool() && IsWindowVisible(prev_hwnd).as_bool() {
+                        bring_hwnd_to_foreground(prev_hwnd);
+                    }
+                }
             }
         }
     });

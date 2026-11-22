@@ -210,13 +210,6 @@ function inTextField(target: EventTarget | null): boolean {
   return el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.isContentEditable === true;
 }
 
-function inInteractive(target: EventTarget | null): boolean {
-  const el = target as { tagName?: string; closest?: (s: string) => unknown } | null;
-  if (inTextField(target)) return true;
-  if (el?.tagName === "BUTTON" || el?.tagName === "A" || el?.tagName === "SELECT") return true;
-  return Boolean(el?.closest?.("button, a, input, textarea, select"));
-}
-
 export function registerShortcutHandlers(host: ShortcutHost, resume: () => void) {
   void onEvent<string>("shortcut", (action) => runGlobalShortcut(host, action, resume));
   // The wardrobe shortcut comes as its own event (shortcuts.rs): it opens the
@@ -235,7 +228,7 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
         e.key === "Enter" &&
         !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey &&
         State.view === "overview" &&
-        !inInteractive(e.target) &&
+        !inTextField(e.target) &&
         State.focusTask &&
         isMediaPill(State.focusTask.id)
       ) {

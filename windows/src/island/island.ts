@@ -463,6 +463,7 @@ export class Island {
       Sound.play("close");
       // A folded card is still waiting: it keeps the island pinned.
       if (!State.pendingApproval) State.isPinned = false;
+      (document.activeElement as HTMLElement | null)?.blur?.();
       void Bridge.focusWindow(false);
       // Another pill's alert borrowed the front: the pill you had comes back (Mac).
       restoreAlertFocus();
