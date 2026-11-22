@@ -171,11 +171,11 @@ test("an unknown event changes nothing", () => {
 
 // ── Stop ──────────────────────────────────────────────────────────────────────
 
-test("a finished session opens the finished view, then goes idle after 5.2 s", () => {
+test("a finished session reveals compact without popping open, then goes idle after 5.2 s", () => {
   hook({ hook_event_name: "Stop", message: "done" });
   assert.equal(task().state, "finished");
   assert.deepEqual(task().steps, ["done"]);
-  assert.deepEqual(asked, ["alert:finished"]);
+  assert.deepEqual(asked, ["reveal"]);
   seconds(5.1);
   assert.equal(task().state, "finished");
   seconds(0.1);
@@ -183,17 +183,14 @@ test("a finished session opens the finished view, then goes idle after 5.2 s", (
 });
 
 test("an island a hook opens is marked as opened automatically", () => {
-  hook({ hook_event_name: "Stop" });
-  assert.deepEqual(alertOptions, [{ auto: true }]);
-  alertOptions = [];
   hook({ hook_event_name: "PermissionRequest", request_id: "r1", tool_name: "Bash" });
   assert.deepEqual(alertOptions, [{ auto: true }]);
 });
 
-test("an alert on an island that is already open only switches its view", () => {
+test("a finished hook on an island that is already open leaves the current view intact", () => {
   State.mode = "expanded";
   hook({ hook_event_name: "Stop" });
-  assert.deepEqual(asked, ["setView:finished"]);
+  assert.deepEqual(asked, []);
 });
 
 test("a session finishing behind another pill only badges its own, for 5.2 s", () => {
@@ -205,12 +202,12 @@ test("a session finishing behind another pill only badges its own, for 5.2 s", (
   assert.equal(task().pillBadge, null);
 });
 
-test("alertsFromAllPills: unfocused pill alert opens the island and restores focus after 5.2 s", () => {
+test("alertsFromAllPills: unfocused pill finished reveals compact and restores focus after 5.2 s", () => {
   State.settings.alertsFromAllPills = true;
   State.setFocus("integration_n8n");
   hook({ hook_event_name: "Stop" });
   assert.equal(State.focusId, "integration_claude");
-  assert.deepEqual(asked, ["alert:finished"]);
+  assert.deepEqual(asked, ["reveal"]);
   seconds(5.2);
   assert.equal(State.focusId, "integration_n8n");
   State.settings.alertsFromAllPills = false;

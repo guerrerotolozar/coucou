@@ -41,6 +41,8 @@ export interface ViewActions {
   collapse(): void;
   /** Folds a waiting card to the compact island without answering it. */
   foldApproval(): void;
+  /** Pauses and hides the island completely until resumed from tray or shortcut. */
+  hideIsland(): void;
   setFocus(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
@@ -123,15 +125,14 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 17));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubbleRound, 19));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 16));
-  // A new Claude Code session, in a project, from here (Mac: the terminal tab).
-  const tabLaunch = h(
-    "button",
-    { class: "tab", title: tl("New Claude Code session"), onclick: () => go("launch") },
-    svg(ICONS.terminal, 17, { stroke: 1.7 }),
-  );
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gearLine, 18, { stroke: 1.6 }));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerLine, 18, { stroke: 1.6 }));
+  const hideBtn = h(
+    "button",
+    { title: tl("Hide Coucou"), onclick: () => { actions.blip(); actions.hideIsland(); } },
+    svg(ICONS.eyeOff, 17, { stroke: 1.7 }),
+  );
   // Folds back to the compact island now, without waiting for the timer (the
   // Mac's ✕). A card waiting for an answer keeps the island open: no ✕ then.
   const closeBtn = h("button", { class: "close", title: tl("Close"), onclick: () => actions.collapse() }, svg(ICONS.xmark, 17));
@@ -149,8 +150,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabLaunch),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, hideBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -161,7 +162,6 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
-      tabLaunch.classList.toggle("on", v === "launch");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(v === "settings" ? svg(ICONS.gearFill, 18) : svg(ICONS.gearLine, 18, { stroke: 1.6 }));

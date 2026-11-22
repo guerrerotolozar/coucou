@@ -51,8 +51,8 @@ pub const PROVIDERS: &[Provider] = &[
         base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
         key: "google-api-key",
         models_path: "models",
-        default_model: "gemini-2.0-flash",
-        not_chat: &["embed", "imagen", "veo", "aqa", "tts", "audio", "live"],
+        default_model: "gemini-2.5-flash",
+        not_chat: &["embed", "imagen", "veo", "aqa", "tts", "audio", "live", "-image", "computer-use", "robotics", "deep-research"],
         max_tokens_field: "max_tokens",
     },
     Provider {
@@ -151,6 +151,75 @@ fn status_error(p: &Provider, status: u16, detail: &str) -> String {
     }
 }
 
+/// Converts OpenAI-style chat messages (plain text or image_url data URL) into Gemini `contents`.
+fn google_contents(history: &[Value], user: &Value) -> Vec<Value> {
+    let to_parts = |msg: &Value| -> Vec<Value> {
+        let content = &msg["content"];
+        if let Some(s) = content.as_str() {
+            return vec![json!({ "text": s })];
+        }
+        let mut parts = Vec::new();
+        if let Some(arr) = content.as_array() {
+            for item in arr {
+                if item.get("type").and_then(Value::as_str) == Some("text") {
+                    if let Some(t) = item.get("text").and_then(Value::as_str) {
+                        parts.push(json!({ "text": t }));
+                    }
+                } else if item.get("type").and_then(Value::as_str) == Some("image_url") {
+                    if let Some(url) = item.pointer("/image_url/url").and_then(Value::as_str) {
+                        if let Some((meta, data)) = url.strip_prefix("data:").and_then(|s| s.split_once(";base64,")) {
+                            parts.push(json!({ "inline_data": { "mime_type": meta, "data": data } }));
+                        }
+                    }
+                }
+            }
+        }
+        parts
+    };
+
+    history
+        .iter()
+        .chain(std::iter::once(user))
+        .map(|msg| {
+            let role = if msg.get("role").and_then(Value::as_str) == Some("assistant") { "model" } else { "user" };
+            json!({ "role": role, "parts": to_parts(msg) })
+        })
+        .collect()
+}
+
+fn google_request_body(system: &str, history: &[Value], user: &Value) -> Value {
+    json!({
+        "system_instruction": { "parts": [{ "text": system }] },
+        "contents": google_contents(history, user),
+        "tools": [{ "google_search": {} }],
+        "generationConfig": { "maxOutputTokens": MAX_TOKENS },
+    })
+}
+
+fn google_reply_text(p: &Provider, response: &Value) -> Result<String, String> {
+    let text: String = response
+        .pointer("/candidates/0/content/parts")
+        .and_then(Value::as_array)
+        .map(|parts| {
+            parts
+                .iter()
+                .filter(|part| part.get("thought").and_then(Value::as_bool) != Some(true))
+                .filter_map(|part| part.get("text").and_then(Value::as_str))
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if !text.is_empty() {
+        return Ok(text);
+    }
+    if let Some(msg) = response.pointer("/error/message").and_then(Value::as_str) {
+        return Err(format!("{}: {msg}", p.name));
+    }
+    Err(t("No response text."))
+}
+
 /// One chat turn with a cloud provider.
 pub async fn send(
     chat: &Chat,
@@ -165,16 +234,32 @@ pub async fn send(
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
-    let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
 
-    let endpoint = url(p, "chat/completions")?;
-    let response = net::client(&endpoint, Duration::from_secs(90))?
-        .post(endpoint)
-        .bearer_auth(&key)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
+    let (response, is_google) = if p.id == "google" {
+        let model_path = model.strip_prefix("models/").unwrap_or(model);
+        let raw_url = format!("https://generativelanguage.googleapis.com/v1beta/models/{model_path}:generateContent");
+        let endpoint = Url::parse(&raw_url).map_err(|e| e.to_string())?;
+        let body = google_request_body(&chat::system_prompt(true), &turn.history, &user);
+        let resp = net::client(&endpoint, Duration::from_secs(90))?
+            .post(endpoint)
+            .header("x-goog-api-key", &key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
+        (resp, true)
+    } else {
+        let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+        let endpoint = url(p, "chat/completions")?;
+        let resp = net::client(&endpoint, Duration::from_secs(90))?
+            .post(endpoint)
+            .bearer_auth(&key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
+        (resp, false)
+    };
     let status = response.status();
     if !status.is_success() {
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
@@ -182,7 +267,7 @@ pub async fn send(
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
-    let text = reply_text(p, &json)?;
+    let text = if is_google { google_reply_text(p, &json)? } else { reply_text(p, &json)? };
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);
@@ -241,6 +326,22 @@ fn parse_models(p: &Provider, json: &Value) -> Vec<ModelInfo> {
         "openrouter" => models.sort_by(|a, b| {
             b.2.cmp(&a.2).then_with(|| a.0.label.to_lowercase().cmp(&b.0.label.to_lowercase()))
         }),
+        // Stable free-tier Flash models first so pickModel and the picker menu show them at the top.
+        "google" => {
+            let rank = |id: &str| -> u8 {
+                match id {
+                    "gemini-2.5-flash" => 0,
+                    "gemini-2.5-flash-lite" => 1,
+                    "gemini-2.0-flash" => 2,
+                    "gemini-2.5-pro" => 3,
+                    _ if id.starts_with("gemini-2.5-flash") => 4,
+                    _ if id.starts_with("gemini-2.0-flash") => 5,
+                    _ if id.starts_with("gemini-") => 6,
+                    _ => 7,
+                }
+            };
+            models.sort_by(|a, b| rank(&a.0.id).cmp(&rank(&b.0.id)).then_with(|| a.0.id.cmp(&b.0.id)));
+        }
         _ => {}
     }
     models.into_iter().map(|(m, _, _)| m).collect()
@@ -434,13 +535,15 @@ mod tests {
         assert_eq!(ids, vec!["gpt-5-mini", "gpt-4o"]);
 
         let google = json!({"data":[
+            {"id":"models/gemini-3.8-flash"},
             {"id":"models/gemini-2.0-flash"},
             {"id":"models/text-embedding-004"},
             {"id":"gemini-2.5-pro"},
+            {"id":"models/gemini-2.5-flash"},
             {"id":"models/imagen-3.0"}
         ]});
         let ids: Vec<_> = parse_models(p("google"), &google).into_iter().map(|m| m.id).collect();
-        assert_eq!(ids, vec!["gemini-2.0-flash", "gemini-2.5-pro"]);
+        assert_eq!(ids, vec!["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-3.8-flash"]);
 
         let openrouter = json!({"data":[
             {"id":"b/paid","name":"B Paid","pricing":{"prompt":"0.000001","completion":"0.000002"}},
@@ -506,5 +609,28 @@ mod tests {
         assert!(content.ends_with("\n\nPlease answer"));
 
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn google_native_request_includes_search_and_skips_thought_parts() {
+        let history = vec![json!({"role":"user","content":"hi"}), json!({"role":"assistant","content":"hey"})];
+        let user = user_message(false, None, "weather today");
+        let body = google_request_body("sys", &history, &user);
+        assert_eq!(body["system_instruction"]["parts"][0]["text"], "sys");
+        assert_eq!(body["tools"], json!([{ "google_search": {} }]));
+        assert_eq!(body["contents"][1]["role"], "model");
+        assert_eq!(body["contents"][2]["parts"][0]["text"], "weather today");
+
+        let ok = json!({
+            "candidates": [{
+                "content": {
+                    "parts": [
+                        { "thought": true, "text": "internal reasoning" },
+                        { "text": "Here is the answer." }
+                    ]
+                }
+            }]
+        });
+        assert_eq!(google_reply_text(p("google"), &ok).unwrap(), "Here is the answer.");
     }
 }

@@ -319,7 +319,7 @@ test("the wardrobe shortcut's own event opens the wardrobe", () => {
 
 test("a global shortcut arrives as an event and opens the chat", () => {
   emit("shortcut", "openChat");
-  assert.deepEqual(did, ["resume", "alert:prompt"]);
+  assert.deepEqual(did, ["resume", "alert:prompt", "keyboard"]);
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {

@@ -294,6 +294,11 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      hideIsland: () => {
+        State.paused = true;
+        void Bridge.setPaused(true);
+        this.fsm.forceHidden();
+      },
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
         if (parseOutfit(State.settings.mochiOutfit) === selection) return;
@@ -1586,13 +1591,20 @@ export class Island {
     // upload view when opened directly so Ctrl+V can paste screenshots).
     const takesKeyboard = (v: IslandViewName | null) =>
       v != null && (TYPING_VIEWS.has(v) || (v === "upload" && !State.fileDragOver));
-    if (this.lastSyncedView !== State.view) {
+    const activeView = State.mode === "expanded" ? State.view : null;
+    if (this.lastSyncedView !== activeView) {
       const wasChat = takesKeyboard(this.lastSyncedView);
-      this.lastSyncedView = State.view;
-      if (takesKeyboard(State.view)) {
-        const view = State.view;
+      this.lastSyncedView = activeView;
+      if (takesKeyboard(activeView)) {
+        const view = activeView!;
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
+        const focusInput = () => {
+          if (State.mode !== "expanded" || State.view !== view) return;
+          window.focus();
+          this.views.get(view)?.focus?.();
+        };
+        window.setTimeout(focusInput, 60);
+        window.setTimeout(focusInput, 180);
       } else if (wasChat) {
         void Bridge.focusWindow(false);
       }

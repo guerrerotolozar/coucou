@@ -16,6 +16,21 @@
       "ko": "YouTube Music 열기",
       "ja": "YouTube Music を開く"
     },
+    "Hide Coucou": {
+      "zh-Hans": "隐藏 Coucou",
+      "hi": "Coucou छिपाएँ",
+      "es": "Ocultar Coucou",
+      "ar": "إخفاء Coucou",
+      "fr": "Masquer Coucou",
+      "bn": "Coucou লুকান",
+      "pt-BR": "Ocultar Coucou",
+      "ru": "Скрыть Coucou",
+      "id": "Sembunyikan Coucou",
+      "de": "Coucou ausblenden",
+      "tr": "Coucou'yu Gizle",
+      "ko": "Coucou 숨기기",
+      "ja": "Coucou を隠す"
+    },
     " · until {date}": {
       "zh-Hans": " · 截至 {date}",
       "hi": " · {date} तक",

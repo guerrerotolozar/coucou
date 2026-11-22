@@ -12,7 +12,7 @@ const row = (provider, tool, on) => ({
 test("the chip names the tool that answers", () => {
   setSubscriptions([row("anthropic", "Claude Code", true), row("google", "Antigravity CLI", true), row("openai", "Codex CLI", false)]);
   assert.equal(chipLabel({ ...DEFAULT_SETTINGS, chatProvider: "anthropic" }, "claude-opus-5"), "claude-opus-5 · Claude Code");
-  assert.equal(chipLabel({ ...DEFAULT_SETTINGS, chatProvider: "google" }, "gemini-2.0-flash"), "Antigravity CLI");
+  assert.equal(chipLabel({ ...DEFAULT_SETTINGS, chatProvider: "google" }, "gemini-2.5-flash"), "Antigravity CLI");
   // Off: the API model, as before.
   assert.equal(chipLabel({ ...DEFAULT_SETTINGS, chatProvider: "openai" }, "gpt-4o"), "gpt-4o");
   assert.deepEqual([...subscribedProviders()], ["anthropic", "google"]);

@@ -541,8 +541,9 @@ function handleHook(island: Island, payload: HookPayload) {
         if (t) t.finalLine = finalText;
       }
       Sound.play("finish");
-      // A card waiting for an answer is never covered by another alert.
-      if (showsAlert(agentId, focused)) surface("finished", true);
+      // A card waiting for an answer is never covered by another alert, and a finished
+      // turn stays in compact mode instead of popping open over the active window.
+      if (showsAlert(agentId, focused)) surface("finished", false);
       else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(

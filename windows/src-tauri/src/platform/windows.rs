@@ -408,23 +408,31 @@ pub fn make_non_activating(win: &WebviewWindow) {
     }
 }
 
-/// A keyboard shortcut opened the island: activating it is enough here.
+/// A keyboard shortcut opened the island: allow activation and bring it to the
+/// foreground so the chat/alert receives typed keys immediately.
 pub fn grab_keyboard(win: &WebviewWindow) {
     set_activating(win, true);
 }
 
 /// Temporarily allow activation so a text field inside the island can be typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
-    let Some(hwnd) = hwnd_of(win) else { return };
-    unsafe {
-        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let want = overlay_bits(if activating {
-            ex & !(WS_EX_NOACTIVATE.0 as isize)
-        } else {
-            ex | WS_EX_NOACTIVATE.0 as isize
-        });
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
-    }
+    let w = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        let Some(hwnd) = hwnd_of(&w) else { return };
+        unsafe {
+            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let want = overlay_bits(if activating {
+                ex & !(WS_EX_NOACTIVATE.0 as isize)
+            } else {
+                ex | WS_EX_NOACTIVATE.0 as isize
+            });
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
+            if activating {
+                bring_hwnd_to_foreground(hwnd);
+                let _ = w.set_focus();
+            }
+        }
+    });
 }
 
 /// An overlay, not an app: a tool window without WS_EX_APPWINDOW, so no taskbar
@@ -598,21 +606,11 @@ pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
     first_with_window(ancestors).into_iter().collect()
 }
 
-fn bring_forward(raw: isize) -> bool {
-    let hwnd = HWND(raw as *mut _);
+unsafe fn bring_hwnd_to_foreground(hwnd: HWND) -> bool {
+    // The island window has WS_EX_NOACTIVATE, so clicks on it do not make Coucou
+    // the active foreground window. Windows blocks SetForegroundWindow unless the
+    // calling thread is attached to the foreground thread or owns foreground rights.
     unsafe {
-        if !IsWindow(Some(hwnd)).as_bool() {
-            return false;
-        }
-        if IsIconic(hwnd).as_bool() {
-            let _ = ShowWindow(hwnd, SW_RESTORE);
-        } else {
-            let _ = ShowWindow(hwnd, SW_SHOW);
-        }
-
-        // The island window has WS_EX_NOACTIVATE, so clicks on it do not make Coucou
-        // the active foreground window. Windows blocks SetForegroundWindow unless the
-        // calling thread is attached to the foreground thread or owns foreground rights.
         let fg_hwnd = GetForegroundWindow();
         if fg_hwnd == hwnd {
             return true;
@@ -649,6 +647,21 @@ fn bring_forward(raw: isize) -> bool {
         }
 
         ok || GetForegroundWindow() == hwnd
+    }
+}
+
+fn bring_forward(raw: isize) -> bool {
+    let hwnd = HWND(raw as *mut _);
+    unsafe {
+        if !IsWindow(Some(hwnd)).as_bool() {
+            return false;
+        }
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        } else {
+            let _ = ShowWindow(hwnd, SW_SHOW);
+        }
+        bring_hwnd_to_foreground(hwnd)
     }
 }
 
