@@ -209,9 +209,6 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
     platform::set_activating(&win, focused);
-    if focused {
-        let _ = win.set_focus();
-    }
 }
 
 /// A keyboard shortcut opened the island: it keeps the keyboard until it folds.
@@ -219,7 +216,6 @@ fn focus_window(app: AppHandle, focused: bool) {
 fn grab_keyboard(app: AppHandle) {
     let Some(win) = island::window(&app) else { return };
     platform::grab_keyboard(&win);
-    let _ = win.set_focus();
 }
 
 #[tauri::command]

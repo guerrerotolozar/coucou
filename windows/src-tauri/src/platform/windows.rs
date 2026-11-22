@@ -438,6 +438,12 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
                 }
                 bring_hwnd_to_foreground(hwnd);
                 let _ = w.set_focus();
+                // Tauri's HWND is only the host container; keyboard events inside the
+                // page belong to msedgewebview2.exe and require ICoreWebView2Controller::MoveFocus.
+                let _ = w.with_webview(|wv| unsafe {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC;
+                    let _ = wv.controller().MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                });
             } else if GetForegroundWindow() == hwnd {
                 let prev = PREV_FG_HWND.swap(0, std::sync::atomic::Ordering::Relaxed);
                 if prev != 0 {
