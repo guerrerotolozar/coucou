@@ -7,11 +7,15 @@ version = "0.6.0"
 edition = "2021"
 license = "MIT"
 
-# Release profile shared by the app and the hook relay: the hook must start fast
-# (Claude Code spawns it on every event), so we optimise for size and speed.
+# Release profile shared by the app and the hook relay: ThinLTO + incremental
+# keeps coucou.exe builds fast without sacrificing runtime performance.
 [profile.release]
 opt-level = "s"
-lto = true
-codegen-units = 1
+lto = "thin"
+codegen-units = 8
+incremental = true
 panic = "abort"
 strip = true
+
+[profile.release.package.coucou-hook]
+codegen-units = 1
