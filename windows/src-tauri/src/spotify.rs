@@ -1365,6 +1365,7 @@ pub(crate) fn is_ytmusic_app(app_id: &str) -> bool {
     lower.contains("cinhimbnkkghhklpknlkffjgod")
         || lower.contains("youtube music")
         || lower.contains("ytmdesktop")
+        || lower.contains("ytmhybrid")
         || lower.contains("ytm-hybrid")
         || lower.contains("ytm hybrid")
 }

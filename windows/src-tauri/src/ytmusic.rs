@@ -493,6 +493,7 @@ mod tests {
         assert!(is_ytmusic_app("msedge._crx_cinhimbnkkghhklpknlkffjgod"));
         assert!(is_ytmusic_app("YouTube Music"));
         assert!(is_ytmusic_app("ytmdesktop"));
+        assert!(is_ytmusic_app("YTMHybrid"));
         assert!(is_ytmusic_app("ytm-hybrid.exe"));
         assert!(is_ytmusic_app("YTM Hybrid"));
         assert!(!is_ytmusic_app("Brave"));
