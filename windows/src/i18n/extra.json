@@ -2757,7 +2757,9 @@
       "ru": "Ответ достиг предела длины. Напишите «продолжай», чтобы получить остальное.",
       "id": "Jawaban mencapai batas panjang. Ketik “lanjutkan” untuk sisanya.",
       "de": "Die Antwort hat die Längengrenze erreicht. Sag „weiter“ für den Rest.",
-      "tr": "Yanıt uzunluk sınırına ulaştı. Devamı için “devam et” de."
+      "tr": "Yanıt uzunluk sınırına ulaştı. Devamı için “devam et” de.",
+      "ko": "답변이 길이 제한에 도달했습니다. 나머지를 보려면 “continue”라고 입력하세요.",
+      "ja": "回答が長さの上限に達しました。続きを見るには「continue」と入力してください。"
     },
     "The file is removed.": {
       "zh-Hans": "该文件将被删除。",
@@ -2890,7 +2892,9 @@
       "ru": "Сервер перестал отправлять ответ. Попробуйте снова.",
       "id": "Server berhenti mengirim jawaban. Coba lagi.",
       "de": "Der Server sendet die Antwort nicht mehr. Versuche es erneut.",
-      "tr": "Sunucu yanıtı göndermeyi bıraktı. Tekrar dene."
+      "tr": "Sunucu yanıtı göndermeyi bıraktı. Tekrar dene.",
+      "ko": "서버가 답변 전송을 중단했습니다. 다시 시도해 주세요.",
+      "ja": "サーバーが回答の送信を停止しました。もう一度お試しください。"
     },
     "The server's answer is too large.": {
       "zh-Hans": "服务器的回复过大。",
@@ -7691,7 +7695,9 @@
       "ru": "Сворачивать при щелчке снаружи",
       "id": "Tutup saat klik di luar",
       "de": "Beim Klick außerhalb zuklappen",
-      "tr": "Dışarı tıklayınca kapat"
+      "tr": "Dışarı tıklayınca kapat",
+      "ko": "바깥을 클릭하면 접기",
+      "ja": "外側をクリックしたときに折りたたむ"
     },
     "Click anywhere outside the open island to fold it. A request that is waiting keeps waiting.": {
       "zh-Hans": "在已打开的岛外任意位置点按即可将其收起。等待中的请求会继续等待。",
@@ -7704,7 +7710,9 @@
       "ru": "Щёлкните в любом месте за пределами открытого острова, чтобы свернуть его. Ожидающий запрос продолжает ждать.",
       "id": "Klik di mana saja di luar pulau yang terbuka untuk menutupnya. Permintaan yang menunggu tetap menunggu.",
       "de": "Klicke irgendwo außerhalb der geöffneten Insel, um sie zuzuklappen. Eine wartende Anfrage bleibt bestehen.",
-      "tr": "Açık adanın dışında herhangi bir yere tıkla, ada kapansın. Bekleyen bir istek beklemeye devam eder."
+      "tr": "Açık adanın dışında herhangi bir yere tıkla, ada kapansın. Bekleyen bir istek beklemeye devam eder.",
+      "ko": "열린 아일랜드 바깥 아무 곳이나 클릭하면 접힙니다. 대기 중인 요청은 계속 유지됩니다.",
+      "ja": "開いているアイランドの外側をクリックすると折りたたまれます。待機中のリクエストはそのまま維持されます。"
     }
   }
 }
