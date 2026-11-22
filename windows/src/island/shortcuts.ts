@@ -134,12 +134,17 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       break;
 
     case "hideIsland":
-      host.hideIsland();
+      if (State.mode === "expanded") host.collapse();
+      else host.hideIsland();
       break;
 
     case "showIsland":
-      resume();
-      host.reveal();
+      if (State.paused || State.mode === "hidden") {
+        resume();
+        host.reveal();
+      } else if (State.mode === "compact") {
+        host.alert(State.defaultView());
+      }
       break;
 
     case "openSettings":

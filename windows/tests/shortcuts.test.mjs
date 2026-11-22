@@ -326,11 +326,19 @@ test("a global shortcut arrives as an event and openChat is disabled", () => {
   assert.deepEqual(did, []);
 });
 
-test("hideIsland, showIsland and openSettings shortcuts act at once", () => {
+test("hideIsland, showIsland and openSettings shortcuts step cleanly", () => {
+  State.mode = "expanded";
   emit("shortcut", "hideIsland");
+  State.mode = "compact";
+  emit("shortcut", "hideIsland");
+  State.mode = "hidden";
+  State.paused = true;
+  emit("shortcut", "showIsland");
+  State.paused = false;
+  State.mode = "compact";
   emit("shortcut", "showIsland");
   emit("shortcut", "openSettings");
-  assert.deepEqual(did, ["hideIsland", "resume", "reveal"]);
+  assert.deepEqual(did, ["collapse", "hideIsland", "resume", "reveal", "alert:overview"]);
   assert.deepEqual(sent("open_settings_window"), [{}]);
 });
 
