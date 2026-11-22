@@ -28,6 +28,7 @@ export interface ShortcutHost {
   collapse(): void;
   hideIsland(): void;
   reveal(): void;
+  openTarget(): void;
   emote(name: BotEmoteName): void;
   setPinned(on: boolean): void;
   /** Gives the island the keyboard, so the in-island keys work (Mac: makeKey). */
@@ -159,6 +160,16 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       void Bridge.openSettingsWindow();
       break;
 
+    case "openFocused":
+      if (
+        State.mode === "expanded" &&
+        State.view === "overview" &&
+        (State.focusTask?.id === "agent_antigravity" || State.focusTask?.id === "agent_opencode")
+      ) {
+        host.openTarget();
+      }
+      break;
+
     case "mediaPlayPause":
       if (State.mode === "expanded" && State.view === "overview" && State.focusTask && isMediaPill(State.focusTask.id)) {
         togglePlay(playerForPill(State.focusTask.id));
@@ -262,21 +273,20 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
     host.wardrobeAnywhere();
   });
 
-  let mediaKeysOn = false;
-  const syncMediaKeys = (focused = true) => {
-    const want =
-      focused &&
-      State.mode === "expanded" &&
-      State.view === "overview" &&
-      State.focusTask != null &&
-      isMediaPill(State.focusTask.id);
-    if (want === mediaKeysOn) return;
-    mediaKeysOn = want;
-    void Bridge.setMediaKeys(want);
+  let lastKeys = "";
+  const syncIslandKeys = (focused = true) => {
+    const active = focused && State.mode === "expanded" && State.view === "overview";
+    const id = State.focusTask?.id ?? "";
+    const media = active && isMediaPill(id);
+    const open = active && (id === "agent_antigravity" || id === "agent_opencode");
+    const sig = `${media ? 1 : 0}:${open ? 1 : 0}`;
+    if (sig === lastKeys) return;
+    lastKeys = sig;
+    void Bridge.setIslandKeys(media, open);
   };
-  State.subscribe(() => syncMediaKeys());
-  window.addEventListener("blur", () => syncMediaKeys(false));
-  window.addEventListener("focus", () => syncMediaKeys(true));
+  State.subscribe(() => syncIslandKeys());
+  window.addEventListener("blur", () => syncIslandKeys(false));
+  window.addEventListener("focus", () => syncIslandKeys(true));
 
   // Capture phase: the chat field stops its own key events from bubbling.
   window.addEventListener(

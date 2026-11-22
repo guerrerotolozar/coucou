@@ -414,6 +414,10 @@ pub fn focus_or_open_antigravity(_folder: Option<&str>) -> bool {
     false
 }
 
+pub fn focus_or_open_opencode(_folder: Option<&str>) -> bool {
+    false
+}
+
 /// Where a CLI such as `codex` or `claude` may be, best first: $PATH, then the
 /// usual per-user install folders, which a desktop launch often leaves out of
 /// $PATH (the native installers' ~/.local/bin, npm's global prefix, Volta, Bun,

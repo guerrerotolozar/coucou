@@ -219,8 +219,8 @@ fn grab_keyboard(app: AppHandle) {
 }
 
 #[tauri::command]
-fn set_media_keys(app: AppHandle, active: bool) {
-    shortcuts::set_media_keys(&app, active);
+fn set_island_keys(app: AppHandle, media: bool, open: bool) {
+    shortcuts::set_island_keys(&app, media, open);
 }
 
 #[tauri::command]
@@ -343,15 +343,22 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// runs in, when it was found (see session_window.rs); otherwise opens the
 /// folder in VS Code, as before. A session in herdr also gets its pane selected,
 /// and never falls back to VS Code.
+fn focus_agent_app(pill_id: Option<&str>, path: Option<&str>) -> bool {
+    match pill_id {
+        Some("agent_antigravity") => platform::focus_or_open_antigravity(path),
+        Some("agent_opencode") => platform::focus_or_open_opencode(path),
+        _ => false,
+    }
+}
+
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>, pill_id: Option<String>) -> bool {
     let in_herdr = session_id.as_deref().is_some_and(herdr::focus);
-    let is_antigravity = pill_id.as_deref() == Some("agent_antigravity");
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
         if in_herdr {
             return true;
         }
-        if is_antigravity && platform::focus_or_open_antigravity(path.as_deref()) {
+        if focus_agent_app(pill_id.as_deref(), path.as_deref()) {
             return true;
         }
         return open_in_vscode(path);
@@ -362,7 +369,7 @@ fn open_session(session_id: Option<String>, path: Option<String>, pill_id: Optio
         if platform::focus_session_window(&owners, &folder) || in_herdr {
             return true;
         }
-        if is_antigravity && platform::focus_or_open_antigravity(path.as_deref()) {
+        if focus_agent_app(pill_id.as_deref(), path.as_deref()) {
             return true;
         }
         open_in_vscode(path)
@@ -374,7 +381,7 @@ fn open_session(session_id: Option<String>, path: Option<String>, pill_id: Optio
     {
         std::thread::spawn(move || {
             if !platform::focus_session_window(&owners, &folder) && !in_herdr {
-                if !(is_antigravity && platform::focus_or_open_antigravity(path.as_deref())) {
+                if !focus_agent_app(pill_id.as_deref(), path.as_deref()) {
                     open_in_vscode(path);
                 }
             }
@@ -968,7 +975,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             grab_keyboard,
-            set_media_keys,
+            set_island_keys,
             reposition,
             fit_zoom,
             hub_shown,

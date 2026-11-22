@@ -233,8 +233,8 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
   /** A keyboard shortcut opened the island: it keeps the keyboard until it folds. */
   grabKeyboard: () => call<void>("grab_keyboard"),
-  /** Captures bare Space / Left / Right while the expanded island has a media pill focused. */
-  setMediaKeys: (active: boolean) => call<void>("set_media_keys", { active }),
+  /** Captures bare Space / Left / Right while the expanded island has a media or agent pill focused. */
+  setIslandKeys: (media: boolean, open: boolean) => call<void>("set_island_keys", { media, open }),
 
   reposition: () => call<void>("reposition"),
   fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),
@@ -266,7 +266,11 @@ export const Bridge = {
    * (Windows; Linux on X11 and KDE Plasma), else the folder in VS Code.
    */
   openSession: (sessionId: string | null, path: string | null, pillId?: string | null) =>
-    call<boolean>("open_session", { sessionId, path, ...(pillId === "agent_antigravity" ? { pillId } : {}) }),
+    call<boolean>("open_session", {
+      sessionId,
+      path,
+      ...(pillId === "agent_antigravity" || pillId === "agent_opencode" ? { pillId } : {}),
+    }),
 
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),

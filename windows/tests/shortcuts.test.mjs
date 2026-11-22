@@ -282,6 +282,7 @@ const host = {
   collapse: () => did.push("collapse"),
   hideIsland: () => did.push("hideIsland"),
   reveal: () => did.push("reveal"),
+  openTarget: () => did.push("openTarget"),
   emote: (e) => did.push(`emote:${e}`),
   setPinned: (on) => did.push(`pin:${on}`),
   grabKeyboard: () => did.push("keyboard"),
@@ -356,7 +357,7 @@ test("media keys (Space, double Right, double Left) control playback when expand
   State.mode = "expanded";
   State.view = "overview";
   State.setFocus(YTMUSIC_ID);
-  assert.deepEqual(sent("set_media_keys"), [{ active: true }]);
+  assert.deepEqual(sent("set_island_keys"), [{ media: true, open: false }]);
 
   emit("shortcut", "mediaPlayPause");
   assert.equal(YTMusic.state.playing, false);
@@ -378,9 +379,19 @@ test("media keys (Space, double Right, double Left) control playback when expand
     { action: "previous", value: null },
   ]);
 
+  State.tasks.push({
+    id: "agent_opencode", name: "OpenCode", color: "#4ADE80", state: "idle",
+    steps: [], pillBadge: null, source: "agent", isIntegration: true,
+    sessionId: null, sessionCwd: null, finalLine: null,
+  });
+  State.setFocus("agent_opencode");
+  assert.deepEqual(sent("set_island_keys").at(-1), { media: false, open: true });
+  emit("shortcut", "openFocused");
+  assert.deepEqual(did, ["openTarget"]);
+
   State.mode = "compact";
   State.notify();
-  assert.deepEqual(sent("set_media_keys"), [{ active: true }, { active: false }]);
+  assert.deepEqual(sent("set_island_keys").at(-1), { media: false, open: false });
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {

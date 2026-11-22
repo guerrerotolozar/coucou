@@ -335,31 +335,35 @@ pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     }
 }
 
-/// Temporary bare keys captured only while the expanded island shows a focused media card.
-const MEDIA_KEYS: [(Code, &str); 3] = [
-    (Code::Space, "mediaPlayPause"),
-    (Code::ArrowRight, "mediaRight"),
-    (Code::ArrowLeft, "mediaLeft"),
-];
-
 /// Registers or unregisters bare Space / Left / Right dynamically while the expanded
-/// island has a media pill (YT Music / Spotify) focused. Always unregistered on fold/blur.
-pub fn set_media_keys<R: Runtime>(app: &AppHandle<R>, active: bool) {
+/// island has a focused media card (Space/Left/Right) or Antigravity/OpenCode (Space).
+pub fn set_island_keys<R: Runtime>(app: &AppHandle<R>, media: bool, open: bool) {
     let Some(gs) = app.try_state::<GlobalShortcut<R>>() else { return };
     let Some(registry) = app.try_state::<Registry>() else { return };
     let mut by_id = registry.by_id.lock().unwrap();
-    for (code, action) in MEDIA_KEYS {
+    let desired: [(Code, Option<&'static str>); 3] = [
+        (Code::Space, if media { Some("mediaPlayPause") } else if open { Some("openFocused") } else { None }),
+        (Code::ArrowRight, if media { Some("mediaRight") } else { None }),
+        (Code::ArrowLeft, if media { Some("mediaLeft") } else { None }),
+    ];
+    for (code, want_action) in desired {
         let sc = Shortcut::new(None, code);
         let id = sc.id();
-        if active {
-            if by_id.contains_key(&id) {
-                continue;
+        match want_action {
+            Some(action) => {
+                if let Some(prev) = by_id.get_mut(&id) {
+                    *prev = action;
+                    continue;
+                }
+                if gs.register(sc).is_ok() {
+                    by_id.insert(id, action);
+                }
             }
-            if gs.register(sc).is_ok() {
-                by_id.insert(id, action);
+            None => {
+                if by_id.remove(&id).is_some() {
+                    let _ = gs.unregister(sc);
+                }
             }
-        } else if by_id.remove(&id).is_some() {
-            let _ = gs.unregister(sc);
         }
     }
 }

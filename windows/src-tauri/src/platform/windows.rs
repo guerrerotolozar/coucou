@@ -818,12 +818,17 @@ pub fn open_ytmusic() -> bool {
     false
 }
 
-/// Focuses an existing Antigravity window (matching `folder` when given), or
-/// spawns Antigravity with `folder` if installed.
-pub fn focus_or_open_antigravity(folder: Option<&str>) -> bool {
+/// Focuses an existing window for `exe_name` (matching `folder` when given), or
+/// spawns the executable from `%LOCALAPPDATA%\<local_parts>` or `path_cli`.
+fn focus_or_open_desktop_editor(
+    exe_name: &str,
+    local_parts: &[&str],
+    path_cli: Option<&str>,
+    folder: Option<&str>,
+) -> bool {
     let pids: Vec<u32> = process_table()
         .into_iter()
-        .filter(|(_, p)| p.exe.eq_ignore_ascii_case("Antigravity.exe"))
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case(exe_name))
         .map(|(pid, _)| pid)
         .collect();
 
@@ -840,9 +845,9 @@ pub fn focus_or_open_antigravity(folder: Option<&str>) -> bool {
     }
 
     let exe = std::env::var_os("LOCALAPPDATA")
-        .map(|base| PathBuf::from(base).join("Programs").join("antigravity").join("Antigravity.exe"))
+        .map(|base| local_parts.iter().fold(PathBuf::from(base), |acc, seg| acc.join(seg)))
         .filter(|p| p.is_file())
-        .or_else(|| find_on_path("agy"));
+        .or_else(|| path_cli.and_then(find_on_path));
 
     if let Some(exe) = exe {
         let mut cmd = Command::new(exe);
@@ -858,6 +863,28 @@ pub fn focus_or_open_antigravity(folder: Option<&str>) -> bool {
     }
 
     false
+}
+
+/// Focuses an existing Antigravity window (matching `folder` when given), or
+/// spawns Antigravity with `folder` if installed.
+pub fn focus_or_open_antigravity(folder: Option<&str>) -> bool {
+    focus_or_open_desktop_editor(
+        "Antigravity.exe",
+        &["Programs", "antigravity", "Antigravity.exe"],
+        Some("agy"),
+        folder,
+    )
+}
+
+/// Focuses an existing OpenCode Desktop window (matching `folder` when given),
+/// or spawns OpenCode if installed.
+pub fn focus_or_open_opencode(folder: Option<&str>) -> bool {
+    focus_or_open_desktop_editor(
+        "OpenCode.exe",
+        &["Programs", "ai.opencode.desktop", "OpenCode.exe"],
+        Some("opencode"),
+        folder,
+    )
 }
 
 /// The MSIX manifest registers `claude`; let Windows resolve its current install.

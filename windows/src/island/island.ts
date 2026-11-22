@@ -228,28 +228,7 @@ export class Island {
         else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null, task?.id ?? null);
       },
       // The ↗ button — same targets as openAgentTarget() on macOS.
-      openTarget: () => {
-        const task = State.focusTask;
-        if (!task) return;
-        const urls: Record<string, string> = {
-          integration_resend: "https://resend.com/emails",
-          integration_vercel: "https://vercel.com/dashboard",
-          integration_github: "https://github.com/pulls",
-          integration_stripe: "https://dashboard.stripe.com/payments",
-          integration_notion: "https://notion.so",
-          integration_calcom: "https://app.cal.com/bookings",
-        };
-        if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-        else if (task.id === "integration_claude" || task.id === "agent_antigravity" || task.sessionId) {
-          void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null, task.id);
-        } else if (task.id === "integration_n8n") void Bridge.openN8n();
-        // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
-        else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
-        else if (task.id === "integration_gitea") void Bridge.openGitea();
-        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen("spotify");
-        else if (task.id === YTMUSIC_ID) void Bridge.spotifyOpen("ytmusic");
-        else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
-      },
+      openTarget: () => this.openTarget(),
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
@@ -684,6 +663,35 @@ export class Island {
    *  It gives it back when it closes, or when the chat is left. */
   takeKeyboard() {
     void Bridge.focusWindow(true);
+  }
+
+  /** The ↗ button or Space on a focused pill: opens the session or integration target. */
+  openTarget() {
+    const task = State.focusTask;
+    if (!task) return;
+    const urls: Record<string, string> = {
+      integration_resend: "https://resend.com/emails",
+      integration_vercel: "https://vercel.com/dashboard",
+      integration_github: "https://github.com/pulls",
+      integration_stripe: "https://dashboard.stripe.com/payments",
+      integration_notion: "https://notion.so",
+      integration_calcom: "https://app.cal.com/bookings",
+    };
+    if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+    else if (
+      task.id === "integration_claude" ||
+      task.id === "agent_antigravity" ||
+      task.id === "agent_opencode" ||
+      task.sessionId
+    ) {
+      void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null, task.id);
+    } else if (task.id === "integration_n8n") void Bridge.openN8n();
+    // WhatsApp Desktop at the open conversation; WhatsApp Web when it isn't installed.
+    else if (task.id === "integration_whatsapp") void Bridge.whatsappOpenApp();
+    else if (task.id === "integration_gitea") void Bridge.openGitea();
+    else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen("spotify");
+    else if (task.id === YTMUSIC_ID) void Bridge.spotifyOpen("ytmusic");
+    else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
   }
 
   /** No click comes with a keyboard shortcut, so the island takes the keyboard outright. */
