@@ -121,7 +121,15 @@ export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPil
   const player = playerForPill(task.id);
   const store = mediaStore(player);
   const color = task.color;
-  const mini = createMiniBot(task, 24, () => store.state.playing && store.state.track != null);
+  const mini = createMiniBot(
+    task,
+    24,
+    () => store.state.playing && store.state.track != null,
+    () =>
+      State.settings.headphonesWithMusic && store.state.playing && store.state.track != null
+        ? "headphones"
+        : "none",
+  );
   const label = h("span", { class: "lbl", text: task.name });
   const playBtn = pillButton(color, ICONS.play, () => togglePlay(player));
   const nextBtn = pillButton(color, ICONS.forward, () => void Bridge.spotifyControl("next", undefined, player));

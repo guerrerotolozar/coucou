@@ -20,7 +20,7 @@ import {
 } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { createMiniBot, miniBotsBusy, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, outfitChange, parseOutfit, withMusic } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
@@ -1361,7 +1361,7 @@ export class Island {
         (botMoving || nowMs < this.closedAwakeUntil))
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+        greetingActive || this.engine.busy || miniBotsBusy() || UploadSeq.isActive || viewAnimating;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -1459,14 +1459,12 @@ export class Island {
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
-    // In compact mode, when a media pill (Spotify / YouTube Music) sits on the
-    // right drawer while the main bot is another agent, let the music bot wear
-    // the headphones and dance instead of taking over the primary agent Mochi.
-    const mediaInRight =
-      State.mode === "compact" &&
-      !isMediaPill(State.focusTask?.id ?? "") &&
-      State.otherTasks.slice(0, 4).some((t) => isMediaPill(t.id));
-    const dancing = !mediaInRight && islandDances({
+    // Headphones and dance belong exclusively to the media pill (Spotify / YouTube Music)
+    // whenever the island is visible; in hidden ("solo Mochi") mode the single bot keeps
+    // its normal behavior.
+    const focusIsMedia = isMediaPill(State.focusTask?.id ?? "");
+    const mainDances = State.mode === "hidden" || focusIsMedia;
+    const dancing = mainDances && islandDances({
       music: State.spotifyPlaying,
       state: State.effectiveState,
       mode: State.mode,
@@ -1577,7 +1575,8 @@ export class Island {
         this.miniGrid.dataset.key = key;
         this.miniGrid.classList.toggle("solo", solo);
         this.miniGrid.replaceChildren();
-        const size = solo ? 22 : 13;
+        const size = solo ? 20 : 13;
+        const mini = !solo;
         for (const t of others) {
           if (isMediaPill(t.id)) {
             const store = mediaStore(playerForPill(t.id));
@@ -1590,10 +1589,11 @@ export class Island {
                   State.settings.headphonesWithMusic && store.state.playing && store.state.track != null
                     ? "headphones"
                     : "none",
+                mini,
               ),
             );
           } else {
-            this.miniGrid.append(createMiniBot(t, size));
+            this.miniGrid.append(createMiniBot(t, size, undefined, undefined, mini));
           }
         }
         pruneMiniBots();

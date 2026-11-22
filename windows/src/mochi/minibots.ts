@@ -32,6 +32,7 @@ export function createMiniBot(
   bodySize: number,
   dancing?: () => boolean,
   outfit?: () => Outfit,
+  mini = true,
 ): HTMLElement {
   const slot = document.createElement("span");
   slot.className = "mini";
@@ -48,7 +49,7 @@ export function createMiniBot(
   slot.append(canvas);
 
   const engine = new BotEngine();
-  engine.isMini = true;
+  engine.isMini = mini;
   engine.bodyColor = hexToRGB(task.color);
   engine.setState(task.state, true);
   if (task.emote) engine.setPermanentEmote(task.emote);
@@ -106,3 +107,12 @@ export function tickMiniBots(dt: number) {
 }
 
 export const miniBotCount = () => live.size;
+
+/** True when any live pill/solo Mochi is dancing or running a non-mini state animation. */
+export function miniBotsBusy(): boolean {
+  for (const mb of live.values()) {
+    if (mb.engine.isDancing || mb.engine.dancingLevel > 0.001) return true;
+    if (!mb.engine.isMini && mb.engine.busy) return true;
+  }
+  return false;
+}
