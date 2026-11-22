@@ -219,6 +219,11 @@ fn grab_keyboard(app: AppHandle) {
 }
 
 #[tauri::command]
+fn set_media_enter(app: AppHandle, active: bool) {
+    shortcuts::set_media_enter(&app, active);
+}
+
+#[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
@@ -963,6 +968,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             grab_keyboard,
+            set_media_enter,
             reposition,
             fit_zoom,
             hub_shown,

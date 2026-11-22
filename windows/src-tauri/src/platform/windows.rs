@@ -448,13 +448,11 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
                 if !fg.0.is_null() && fg != hwnd {
                     PREV_FG_HWND.store(fg.0 as isize, std::sync::atomic::Ordering::Relaxed);
                 }
-                let fg_ok = bring_hwnd_to_foreground(hwnd);
+                let _ = bring_hwnd_to_foreground(hwnd);
                 let _ = w.set_focus();
-                let is_fg = GetForegroundWindow() == hwnd;
                 let _ = w.with_webview(move |wv| {
                     use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC;
-                    let res = wv.controller().MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-                    crate::log::line(format!("focus activating=true fg_ok={fg_ok} is_fg={is_fg} move_focus={res:?}"));
+                    let _ = wv.controller().MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                 });
             } else if GetForegroundWindow() == hwnd {
                 let prev = PREV_FG_HWND.swap(0, std::sync::atomic::Ordering::Relaxed);

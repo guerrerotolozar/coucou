@@ -233,6 +233,8 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
   /** A keyboard shortcut opened the island: it keeps the keyboard until it folds. */
   grabKeyboard: () => call<void>("grab_keyboard"),
+  /** Captures bare Enter while the expanded island has a media pill focused. */
+  setMediaEnter: (active: boolean) => call<void>("set_media_enter", { active }),
 
   reposition: () => call<void>("reposition"),
   fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),

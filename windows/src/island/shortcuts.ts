@@ -155,6 +155,12 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       void Bridge.openSettingsWindow();
       break;
 
+    case "mediaPlayPause":
+      if (State.mode === "expanded" && State.view === "overview" && State.focusTask && isMediaPill(State.focusTask.id)) {
+        togglePlay(playerForPill(State.focusTask.id));
+      }
+      break;
+
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
     // attachFrontWindow isn't in this version.
     default:
@@ -220,24 +226,27 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
     host.wardrobeAnywhere();
   });
 
+  let mediaEnterOn = false;
+  const syncMediaEnter = (focused = true) => {
+    const want =
+      focused &&
+      State.mode === "expanded" &&
+      State.view === "overview" &&
+      State.focusTask != null &&
+      isMediaPill(State.focusTask.id);
+    if (want === mediaEnterOn) return;
+    mediaEnterOn = want;
+    void Bridge.setMediaEnter(want);
+  };
+  State.subscribe(() => syncMediaEnter());
+  window.addEventListener("blur", () => syncMediaEnter(false));
+  window.addEventListener("focus", () => syncMediaEnter(true));
+
   // Capture phase: the chat field stops its own key events from bubbling.
   window.addEventListener(
     "keydown",
     (e: KeyboardEvent) => {
       if (State.mode !== "expanded") return;
-      if (
-        e.key === "Enter" &&
-        !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey &&
-        State.view === "overview" &&
-        !inTextField(e.target) &&
-        State.focusTask &&
-        isMediaPill(State.focusTask.id)
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        togglePlay(playerForPill(State.focusTask.id));
-        return;
-      }
       const action = islandKeyAction(e, { view: State.view, inTextField: inTextField(e.target) });
       if (!action) return;
       e.preventDefault();

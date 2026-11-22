@@ -335,6 +335,29 @@ pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     }
 }
 
+/// Temporary Enter capture while the expanded island shows a focused media card.
+const MEDIA_ENTER_ACTION: &str = "mediaPlayPause";
+
+/// Registers or unregisters bare `Enter` dynamically while the expanded island
+/// has a media pill (YT Music / Spotify) focused. Always unregistered on fold/blur.
+pub fn set_media_enter<R: Runtime>(app: &AppHandle<R>, active: bool) {
+    let Some(gs) = app.try_state::<GlobalShortcut<R>>() else { return };
+    let Some(registry) = app.try_state::<Registry>() else { return };
+    let sc = Shortcut::new(None, Code::Enter);
+    let id = sc.id();
+    let mut by_id = registry.by_id.lock().unwrap();
+    if active {
+        if by_id.contains_key(&id) {
+            return;
+        }
+        if gs.register(sc).is_ok() {
+            by_id.insert(id, MEDIA_ENTER_ACTION);
+        }
+    } else if by_id.remove(&id).is_some() {
+        let _ = gs.unregister(sc);
+    }
+}
+
 /// Unregisters everything Coucou holds.
 fn release<R: Runtime>(app: &AppHandle<R>) {
     if let Some(gs) = app.try_state::<GlobalShortcut<R>>() {
