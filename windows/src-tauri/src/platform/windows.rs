@@ -45,9 +45,9 @@ use ::windows::Win32::UI::Shell::{
 use ::windows::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos,
     GetForegroundWindow, GetWindow, GetWindowLongPtrW, GetWindowTextW, GetWindowThreadProcessId,
-    IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, SetWindowLongPtrW, ShowWindow,
-    GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, SetWindowLongPtrW, SetWindowPos,
+    ShowWindow, GWL_EXSTYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+    SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -422,6 +422,9 @@ static PREV_FG_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicI
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let w = win.clone();
     let _ = win.run_on_main_thread(move || {
+        // Keep tao's internal focusable flag in sync so set_ignore_cursor_events
+        // does not restore WS_EX_NOACTIVATE on the next cursor poll tick.
+        let _ = w.set_focusable(activating);
         let Some(hwnd) = hwnd_of(&w) else { return };
         unsafe {
             let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
@@ -431,18 +434,27 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
                 ex | WS_EX_NOACTIVATE.0 as isize
             });
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
+            let _ = SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            );
             if activating {
                 let fg = GetForegroundWindow();
                 if !fg.0.is_null() && fg != hwnd {
                     PREV_FG_HWND.store(fg.0 as isize, std::sync::atomic::Ordering::Relaxed);
                 }
-                bring_hwnd_to_foreground(hwnd);
+                let fg_ok = bring_hwnd_to_foreground(hwnd);
                 let _ = w.set_focus();
-                // Tauri's HWND is only the host container; keyboard events inside the
-                // page belong to msedgewebview2.exe and require ICoreWebView2Controller::MoveFocus.
-                let _ = w.with_webview(|wv| unsafe {
+                let is_fg = GetForegroundWindow() == hwnd;
+                let _ = w.with_webview(move |wv| {
                     use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC;
-                    let _ = wv.controller().MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                    let res = wv.controller().MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                    crate::log::line(format!("focus activating=true fg_ok={fg_ok} is_fg={is_fg} move_focus={res:?}"));
                 });
             } else if GetForegroundWindow() == hwnd {
                 let prev = PREV_FG_HWND.swap(0, std::sync::atomic::Ordering::Relaxed);
