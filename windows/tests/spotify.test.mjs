@@ -162,7 +162,12 @@ test("the engine dances only once asked, and keeps its frames going meanwhile", 
 
 // ── Reports from Rust ─────────────────────────────────────────────────────────
 
-const island = { reveals: 0, revealSilently() { this.reveals += 1; } };
+const island = {
+  reveals: 0,
+  peeks: [],
+  revealSilently() { this.reveals += 1; },
+  peekTrack(pillId, ms) { this.peeks.push({ pillId, ms }); },
+};
 registerSpotifyHandlers(island);
 
 beforeEach(() => {
@@ -178,6 +183,7 @@ beforeEach(() => {
   Spotify.state = { ...IDLE_SPOTIFY };
   Spotify.artwork = null;
   island.reveals = 0;
+  island.peeks = [];
 });
 
 const spotifyTask = () => State.tasks.find((t) => t.id === SPOTIFY_ID);
@@ -301,4 +307,22 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   assert.equal(Spotify.state.playing, false);
   pill.el.fire("mouseleave");
   assert.ok(!pill.el.classList.contains("controls"));
+});
+
+test("changing tracks triggers a 3s peekTrack when playing and unpaused", () => {
+  State.mode = "compact";
+  emit("spotify", playing({ track: track({ title: "Track A", artist: "Artist 1" }) }));
+  island.peeks = [];
+  emit("spotify", playing({ track: track({ title: "Track B", artist: "Artist 2" }) }));
+  assert.deepEqual(island.peeks, [{ pillId: SPOTIFY_ID, ms: 3000 }]);
+
+  // Same track update (e.g. position tick) does not re-trigger peek.
+  island.peeks = [];
+  emit("spotify", playing({ track: track({ title: "Track B", artist: "Artist 2" }), position: 5 }));
+  assert.deepEqual(island.peeks, []);
+
+  // Paused Coucou does not peek.
+  State.paused = true;
+  emit("spotify", playing({ track: track({ title: "Track C", artist: "Artist 3" }) }));
+  assert.deepEqual(island.peeks, []);
 });

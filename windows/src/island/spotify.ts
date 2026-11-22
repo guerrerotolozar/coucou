@@ -16,6 +16,15 @@ import { t } from "../i18n/i18n";
 export interface SpotifyHost {
   /** Compact island from hidden, no peek sound. */
   revealSilently(): void;
+  /** Briefly expands the media card when the track changes, then folds back. */
+  peekTrack?(pillId: string, durationMs: number): void;
+}
+
+const TRACK_PEEK_MS = 3000;
+const lastTrackKey: Record<MediaPlayerId, string | null> = { spotify: null, ytmusic: null };
+
+function trackKey(track: SpotifyState["track"]): string {
+  return track ? `${track.title}\0${track.artist}` : "";
 }
 
 export function registerSpotifyHandlers(island: SpotifyHost) {
@@ -38,10 +47,27 @@ export function registerSpotifyHandlers(island: SpotifyHost) {
 /** A report from Rust (or the answer to a refresh). */
 export function applySpotify(island: SpotifyHost, next: SpotifyState, player: MediaPlayerId = "spotify") {
   const wasPlaying = State.spotifyPlaying;
+  const prevSeen = lastTrackKey[player];
+  const nextKey = trackKey(next.track);
+  lastTrackKey[player] = nextKey;
+
   mediaStore(player).state = next;
   syncPillName();
-  // Only on not playing → playing (SpotifyController.setPlaying).
-  if (!wasPlaying && State.spotifyPlaying && !State.paused && State.mode === "hidden") {
+
+  const pillId = player === "ytmusic" ? YTMUSIC_ID : SPOTIFY_ID;
+  const trackChanged = prevSeen !== null && nextKey !== "" && nextKey !== prevSeen;
+  if (
+    trackChanged &&
+    next.playing &&
+    !isAd(next.track) &&
+    !State.paused &&
+    !State.pendingApproval &&
+    State.mode !== "expanded" &&
+    State.settings.activeIntegrations.includes(pillId)
+  ) {
+    island.peekTrack?.(pillId, TRACK_PEEK_MS);
+  } else if (!wasPlaying && State.spotifyPlaying && !State.paused && State.mode === "hidden") {
+    // Only on not playing → playing (SpotifyController.setPlaying).
     island.revealSilently();
   }
   State.notify();

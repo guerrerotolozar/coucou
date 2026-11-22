@@ -601,6 +601,46 @@ export class Island {
     this.silentReveal = false;
   }
 
+  private peekTimer: number | null = null;
+  private peekReturn: { mode: IslandMode; focusId: string | null } | null = null;
+
+  private clearTrackPeek() {
+    if (this.peekTimer != null) {
+      window.clearTimeout(this.peekTimer);
+      this.peekTimer = null;
+    }
+    this.peekReturn = null;
+  }
+
+  /** Briefly expands the media card when the track changes, without stealing keyboard focus. */
+  peekTrack(pillId: string, durationMs = 3000) {
+    if (State.paused || State.pendingApproval) return;
+    if (State.mode === "expanded" && !this.peekReturn) return;
+
+    if (!this.peekReturn) {
+      this.peekReturn = { mode: State.mode, focusId: State.focusId };
+    }
+    if (this.peekTimer != null) {
+      window.clearTimeout(this.peekTimer);
+      this.peekTimer = null;
+    }
+
+    if (State.focusId !== pillId) State.setFocus(pillId);
+    this.lastAutoOpenAt = performance.now();
+    this.fsm.forceHome();
+    this.expand("overview");
+
+    this.peekTimer = window.setTimeout(() => {
+      this.peekTimer = null;
+      const ret = this.peekReturn;
+      this.peekReturn = null;
+      if (!ret || State.mode !== "expanded" || State.view !== "overview" || State.pendingApproval) return;
+      if (ret.focusId && State.focusId !== ret.focusId) State.setFocus(ret.focusId);
+      if (ret.mode === "hidden") this.fsm.forceHidden();
+      else this.fsm.forcePetit();
+    }, durationMs);
+  }
+
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
   toggleWardrobe() {
     if (State.paused || State.mode === "hidden") return;
@@ -1102,6 +1142,7 @@ export class Island {
       Sound.resume();
       State.lastActivity = performance.now();
       // A click makes a hover-opened island an ordinary open one.
+      this.clearTrackPeek();
       this.fsm.userInteracted();
       // A press on Mochi may become a drag out to the desktop.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
