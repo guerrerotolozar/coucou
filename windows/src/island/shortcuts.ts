@@ -11,7 +11,9 @@ import { Bridge, onEvent } from "../core/bridge";
 import type { BotEmoteName, IslandViewName } from "../core/layout";
 import { cyclePill, islandKeyAction, navigate, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
 import { Sound } from "../core/sound";
+import { isMediaPill, playerForPill } from "../core/spotify";
 import { State } from "../core/state";
+import { togglePlay } from "../views/spotify";
 
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 
@@ -144,6 +146,7 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
         host.reveal();
       } else if (State.mode === "compact") {
         host.alert(State.defaultView());
+        host.grabKeyboard();
       }
       break;
 
@@ -207,6 +210,13 @@ function inTextField(target: EventTarget | null): boolean {
   return el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.isContentEditable === true;
 }
 
+function inInteractive(target: EventTarget | null): boolean {
+  const el = target as { tagName?: string; closest?: (s: string) => unknown } | null;
+  if (inTextField(target)) return true;
+  if (el?.tagName === "BUTTON" || el?.tagName === "A" || el?.tagName === "SELECT") return true;
+  return Boolean(el?.closest?.("button, a, input, textarea, select"));
+}
+
 export function registerShortcutHandlers(host: ShortcutHost, resume: () => void) {
   void onEvent<string>("shortcut", (action) => runGlobalShortcut(host, action, resume));
   // The wardrobe shortcut comes as its own event (shortcuts.rs): it opens the
@@ -221,6 +231,19 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
     "keydown",
     (e: KeyboardEvent) => {
       if (State.mode !== "expanded") return;
+      if (
+        e.key === "Enter" &&
+        !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey &&
+        State.view === "overview" &&
+        !inInteractive(e.target) &&
+        State.focusTask &&
+        isMediaPill(State.focusTask.id)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePlay(playerForPill(State.focusTask.id));
+        return;
+      }
       const action = islandKeyAction(e, { view: State.view, inTextField: inTextField(e.target) });
       if (!action) return;
       e.preventDefault();

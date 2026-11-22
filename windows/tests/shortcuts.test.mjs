@@ -338,8 +338,29 @@ test("hideIsland, showIsland and openSettings shortcuts step cleanly", () => {
   State.mode = "compact";
   emit("shortcut", "showIsland");
   emit("shortcut", "openSettings");
-  assert.deepEqual(did, ["collapse", "hideIsland", "resume", "reveal", "alert:overview"]);
+  assert.deepEqual(did, ["collapse", "hideIsland", "resume", "reveal", "alert:overview", "keyboard"]);
   assert.deepEqual(sent("open_settings_window"), [{}]);
+});
+
+test("Enter pauses/resumes when expanded on overview with a media pill focused", async () => {
+  const { YTMUSIC_ID, YTMusic } = await import("../src/core/spotify.ts");
+  YTMusic.state = { running: true, playing: true, shuffle: false, repeat: false, position: 0, track: null };
+  State.tasks = [{
+    id: YTMUSIC_ID, name: "YouTube Music", color: "#FF0000", state: "idle",
+    steps: [], pillBadge: null, source: "integration", isIntegration: true,
+    sessionId: null, sessionCwd: null, finalLine: null,
+  }];
+  State.setFocus(YTMUSIC_ID);
+  State.mode = "expanded";
+  State.view = "overview";
+  const keydown = listeners.find((l) => l.type === "keydown");
+  const e = { key: "Enter", code: "Enter", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, target: null, prevented: false, stopped: false };
+  e.preventDefault = () => { e.prevented = true; };
+  e.stopPropagation = () => { e.stopped = true; };
+  keydown.fn(e);
+  assert.equal(e.prevented, true);
+  assert.equal(YTMusic.state.playing, false);
+  assert.deepEqual(sent("ytmusic_control"), [{ action: "playPause", value: null }]);
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {
