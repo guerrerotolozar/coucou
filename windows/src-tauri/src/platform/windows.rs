@@ -749,10 +749,21 @@ fn open_claude_with(
     focus() || squirrel() || protocol()
 }
 
-/// Focuses a running YouTube Music PWA/desktop window, launches its Start Menu
-/// PWA shortcut if installed, or falls back to opening music.youtube.com.
+/// Focuses a running YouTube Music PWA/desktop window (including YTM Hybrid),
+/// launches its installed executable/shortcut, or falls back to music.youtube.com.
 pub fn open_ytmusic() -> bool {
-    let pids: Vec<u32> = process_table()
+    let table = process_table();
+    let hybrid_pids: Vec<u32> = table
+        .iter()
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case("ytm-hybrid.exe"))
+        .map(|(pid, _)| *pid)
+        .collect();
+    if let Some((hwnd, _, _)) = top_windows().into_iter().find(|(_, owner, _)| hybrid_pids.contains(owner)) {
+        bring_forward(hwnd);
+        return true;
+    }
+
+    let pids: Vec<u32> = table
         .into_iter()
         .filter(|(_, p)| {
             matches!(
@@ -768,6 +779,14 @@ pub fn open_ytmusic() -> bool {
     }) {
         bring_forward(hwnd);
         return true;
+    }
+
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        let hybrid = PathBuf::from(local).join("Programs").join("YTM Hybrid").join("ytm-hybrid.exe");
+        if hybrid.is_file() {
+            open_url(&hybrid.to_string_lossy());
+            return true;
+        }
     }
 
     if let Some(appdata) = std::env::var_os("APPDATA") {

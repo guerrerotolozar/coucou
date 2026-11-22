@@ -1359,12 +1359,14 @@ pub fn is_spotify_app(app_id: &str) -> bool {
 }
 
 /// YouTube Music PWA (Chromium deterministic app ID across Brave/Chrome/Edge)
-/// or desktop clients such as th-ch/youtube-music and ytmdesktop.
+/// or desktop clients such as th-ch/youtube-music, ytmdesktop and YtmHybridClient.
 pub(crate) fn is_ytmusic_app(app_id: &str) -> bool {
     let lower = app_id.to_ascii_lowercase();
     lower.contains("cinhimbnkkghhklpknlkffjgod")
         || lower.contains("youtube music")
         || lower.contains("ytmdesktop")
+        || lower.contains("ytm-hybrid")
+        || lower.contains("ytm hybrid")
 }
 
 /// Windows durations and timeline positions: 100 ns ticks → seconds.
