@@ -31,6 +31,7 @@ import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../vie
 import { h } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
 import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
+import { ClickOutside } from "./click-outside";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
@@ -149,6 +150,9 @@ export class Island {
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
+  private readonly clickOutside = new ClickOutside();
+  /** When a hook last opened the island by itself (performance.now()). */
+  private lastAutoOpenAt = -Infinity;
 
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
@@ -452,6 +456,7 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
+    this.clickOutside.clear();
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
@@ -541,8 +546,35 @@ export class Island {
     this.fsm.forcePetit();
   }
 
-  /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
-  alert(view: IslandViewName) {
+  /**
+   * Esc and a click outside: fold a waiting card without answering it, or close
+   * the island unless the user pinned it.
+   */
+  private dismiss() {
+    if (State.mode !== "expanded") return;
+    if (State.pendingApproval) this.foldApproval();
+    else if (!State.isPinned) this.collapse();
+  }
+
+  /** A left press began outside the island (Rust, island.rs). */
+  onPressOutside() {
+    this.clickOutside.press(performance.now(), State.mode === "expanded");
+  }
+
+  /** That press ended outside the island too: a click outside. */
+  onClickOutside() {
+    if (this.clickOutside.release(State.settings.foldOnClickOutside, State.mode === "expanded", this.lastAutoOpenAt)) {
+      this.dismiss();
+    }
+  }
+
+  /**
+   * Alert from the hook server: open on this view. Pinned alerts never auto-close.
+   * `auto`: the open was not the user's doing, so a click right after it is not
+   * meant to fold it (see click-outside.ts).
+   */
+  alert(view: IslandViewName, opts?: { auto?: boolean }) {
+    if (opts?.auto) this.lastAutoOpenAt = performance.now();
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
@@ -1099,10 +1131,7 @@ export class Island {
     // a terminal — so it may fold a waiting card away, as Escape in the notch
     // does on macOS.
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && State.mode === "expanded") {
-        if (State.pendingApproval) this.foldApproval();
-        else if (!State.isPinned) this.collapse();
-      }
+      if (e.key === "Escape") this.dismiss();
       State.lastActivity = performance.now();
     });
 

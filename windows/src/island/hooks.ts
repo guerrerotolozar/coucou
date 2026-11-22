@@ -398,7 +398,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (State.mode === "expanded") {
       if (isAlert) island.setView(view);
     } else if (isAlert) {
-      island.alert(view);
+      island.alert(view, { auto: true });
     } else if (State.mode === "hidden") {
       island.reveal();
     }
@@ -671,7 +671,7 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, view);
       // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
       // the same way: beginApproval brought its pill to the front.
-      island.alert(view);
+      island.alert(view, { auto: true });
       break;
     }
 

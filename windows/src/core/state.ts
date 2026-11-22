@@ -105,6 +105,8 @@ export interface Settings {
   openOnHover: boolean;
   /** Open the island for a moment when any pill finishes or hits an error. */
   alertsFromAllPills: boolean;
+  /** A left click outside the open island folds it, as Esc does. */
+  foldOnClickOutside: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
   /** What the closed island shows at the top of the screen (see core/closed.ts). */
@@ -182,6 +184,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoCloseInterval: 15,
   openOnHover: false,
   alertsFromAllPills: false,
+  foldOnClickOutside: true,
   showClock: false,
   closedIsland: "mochi",
   headphonesWithMusic: false,

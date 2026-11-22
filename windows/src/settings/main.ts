@@ -40,6 +40,8 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+/** The platform can see clicks made in other windows (Windows). Not Linux. */
+let cursorPoll = true;
 
 const windowRoot = document.getElementById("hub")!;
 /** Where the Notch page being shown draws its sections. */
@@ -1132,6 +1134,13 @@ function generalSection(): HTMLElement {
       openOnHover,
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+    ...(cursorPoll ? [
+      h("div", { class: "row" },
+        h("label", { text: t("Fold when I click outside") }),
+        toggle(settings.foldOnClickOutside, (v) => { settings.foldOnClickOutside = v; void save(); }),
+      ),
+      h("div", { class: "hint", text: t("Click anywhere outside the open island to fold it. A request that is waiting keeps waiting.") }),
+    ] : []),
     h("div", { class: "row" },
       h("label", { text: t("Open for every pill’s alerts") }),
       toggle(settings.alertsFromAllPills, (v) => { settings.alertsFromAllPills = v; void save(); }),
@@ -1474,6 +1483,7 @@ async function main() {
   if (boot) {
     settings = { ...settings, ...boot.settings };
     version = boot.version;
+    cursorPoll = boot.cursorPoll;
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
