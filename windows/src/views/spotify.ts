@@ -12,7 +12,7 @@ import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State, type AgentTask } from "../core/state";
 import {
-  SPOTIFY_GREEN, SPOTIFY_ID, YTMUSIC_ID, YTMUSIC_RED, currentArtwork, formatTime, isAd, mediaStore,
+  SPOTIFY_GREEN, SPOTIFY_ID, YTMUSIC_ID, YTMUSIC_RED, currentArtwork, formatTime, isAd, isMediaPill, mediaStore,
   playerForPill, spotifyPosition, volumeLevel, withPlaying,
   type MediaPlayerId, type SpotifyTrack,
 } from "../core/spotify";
@@ -526,6 +526,95 @@ export function buildSpotifyCard(player: MediaPlayerId = "spotify"): SpotifyCard
       if (track) syncPlaying(track);
       else syncIdle();
       syncTimer();
+    },
+  };
+}
+
+function sampleArtworkRgb(dataUrl: string, fallback: string, done: (rgb: string) => void) {
+  if (typeof Image === "undefined" || typeof document === "undefined") {
+    done(fallback);
+    return;
+  }
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const c = document.createElement("canvas");
+      c.width = 8;
+      c.height = 8;
+      const ctx = c.getContext("2d");
+      if (!ctx) return done(fallback);
+      ctx.drawImage(img, 0, 0, 8, 8);
+      const data = ctx.getImageData(0, 0, 8, 8).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = data[i] + data[i + 1] + data[i + 2];
+        if (lum < 36 || lum > 720) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        n++;
+      }
+      if (n === 0) return done(fallback);
+      done(`${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)}`);
+    } catch {
+      done(fallback);
+    }
+  };
+  img.onerror = () => done(fallback);
+  img.src = dataUrl;
+}
+
+/** Promo-card style notification shown briefly on track change (no Mochi, no pills). */
+export function buildNowPlayingCard(): { el: HTMLElement; sync(): void } {
+  const kickerDot = h("i", { class: "promo-dot" });
+  const kickerText = h("span");
+  const kicker = h("div", { class: "promo-kicker" }, kickerDot, kickerText);
+  const title = h("div", { class: "promo-title" });
+  const sub = h("div", { class: "promo-sub" });
+  const meta = h("div", { class: "promo-meta" }, kicker, title, sub);
+  const art = h("div", { class: "promo-art" });
+  const card = h("div", { class: "card promo-card" }, meta, art);
+  const el = h("div", { class: "view" }, card);
+
+  let lastArtKey = "";
+  let lastTrackKey = "";
+
+  return {
+    el,
+    sync() {
+      const focusId = State.focusId && isMediaPill(State.focusId) ? State.focusId : YTMUSIC_ID;
+      const player = playerForPill(focusId);
+      const isYt = player === "ytmusic";
+      const accent = isYt ? YTMUSIC_RED : SPOTIFY_GREEN;
+      const fallbackRgb = isYt ? "190, 28, 36" : "29, 185, 84";
+      const store = mediaStore(player);
+      const track = store.state.track;
+      const artUrl = currentArtwork(store.state, player);
+
+      kickerDot.style.background = accent;
+      kickerText.textContent = isYt ? "YouTube Music" : "Spotify";
+
+      const tk = `${player}:${track?.title ?? ""}:${track?.artist ?? ""}:${track?.album ?? ""}`;
+      if (tk !== lastTrackKey) {
+        lastTrackKey = tk;
+        title.textContent = track ? (isAd(track) ? t("Advertisement") : track.title) : "";
+        sub.textContent = track && !isAd(track) ? [track.artist, track.album].filter(Boolean).join(" · ") : "";
+      }
+
+      const ak = `${player}:${artUrl ?? ""}`;
+      if (ak !== lastArtKey) {
+        lastArtKey = ak;
+        clear(art);
+        if (artUrl) {
+          art.append(h("img", { src: artUrl, alt: "" }));
+          sampleArtworkRgb(artUrl, fallbackRgb, (rgb) => {
+            if (ak === lastArtKey) card.style.setProperty("--promo-rgb", rgb);
+          });
+        } else {
+          card.style.setProperty("--promo-rgb", fallbackRgb);
+          art.append(svg(ICONS.musicNote, 30));
+        }
+      }
     },
   };
 }

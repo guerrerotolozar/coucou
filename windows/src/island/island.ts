@@ -603,6 +603,7 @@ export class Island {
 
   private peekTimer: number | null = null;
   private peekReturn: { mode: IslandMode; focusId: string | null } | null = null;
+  private peekSuppressClosed = false;
 
   private clearTrackPeek() {
     if (this.peekTimer != null) {
@@ -610,10 +611,12 @@ export class Island {
       this.peekTimer = null;
     }
     this.peekReturn = null;
+    this.peekSuppressClosed = false;
   }
 
-  /** Briefly expands the media card when the track changes, without stealing keyboard focus. */
-  peekTrack(pillId: string, durationMs = 3000) {
+  /** Briefly hides the active pill/notch, slides down the track Promo Card for 4s,
+   *  then slides back up and restores the previous notch or compact island. */
+  peekTrack(pillId: string, durationMs = 4000) {
     if (State.paused || State.pendingApproval) return;
     if (State.mode === "expanded" && !this.peekReturn) return;
 
@@ -625,20 +628,56 @@ export class Island {
       this.peekTimer = null;
     }
 
-    if (State.focusId !== pillId) State.setFocus(pillId);
-    this.lastAutoOpenAt = performance.now();
-    this.fsm.forceHome();
-    this.expand("overview");
+    const openPromo = () => {
+      if (!this.peekReturn || State.paused || State.pendingApproval) {
+        this.clearTrackPeek();
+        return;
+      }
+      this.peekSuppressClosed = false;
+      if (State.focusId !== pillId) State.setFocus(pillId);
+      this.lastAutoOpenAt = performance.now();
+      this.fsm.forceHome();
+      this.expand("nowPlaying");
 
-    this.peekTimer = window.setTimeout(() => {
-      this.peekTimer = null;
-      const ret = this.peekReturn;
-      this.peekReturn = null;
-      if (!ret || State.mode !== "expanded" || State.view !== "overview" || State.pendingApproval) return;
-      if (ret.focusId && State.focusId !== ret.focusId) State.setFocus(ret.focusId);
-      if (ret.mode === "hidden") this.fsm.forceHidden();
-      else this.fsm.forcePetit();
-    }, durationMs);
+      this.peekTimer = window.setTimeout(() => {
+        this.peekTimer = null;
+        const ret = this.peekReturn;
+        this.peekReturn = null;
+        if (!ret || State.mode !== "expanded" || State.view !== "nowPlaying" || State.pendingApproval) return;
+        this.peekSuppressClosed = true;
+        this.fsm.forceHidden();
+        this.updateClosed();
+        this.animateGeometry(true);
+        State.notify();
+
+        window.setTimeout(() => {
+          this.peekSuppressClosed = false;
+          if (ret.focusId && State.focusId !== ret.focusId) State.setFocus(ret.focusId);
+          if (ret.mode === "compact" && !State.paused) {
+            this.silentReveal = true;
+            this.fsm.reveal();
+            this.silentReveal = false;
+          } else {
+            this.updateClosed();
+            this.animateGeometry(false);
+            this.updateWindowCollapsed();
+            this.scheduleClosedLife();
+            State.notify();
+          }
+        }, 240);
+      }, durationMs);
+    };
+
+    if (State.mode === "expanded") {
+      openPromo();
+      return;
+    }
+    this.peekSuppressClosed = true;
+    this.fsm.forceHidden();
+    this.updateClosed();
+    this.animateGeometry(true);
+    State.notify();
+    this.peekTimer = window.setTimeout(openPromo, 220);
   }
 
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
@@ -958,7 +997,7 @@ export class Island {
 
   /** The closed island stays on screen (anything but "hidden"), unless paused/hidden manually. */
   private get closedShows(): boolean {
-    return !State.paused && closedIsland(State.settings.closedIsland) !== "hidden";
+    return !State.paused && !this.peekSuppressClosed && closedIsland(State.settings.closedIsland) !== "hidden";
   }
 
   private targetSize(): { w: number; h: number; r: number } {
@@ -1474,7 +1513,7 @@ export class Island {
   private updateBotTargets() {
     let p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
     // The closed island with Mochi in it, as on a Mac without a notch.
-    if (State.mode === "hidden" && !State.paused && closedIsland(State.settings.closedIsland) === "mochi") {
+    if (State.mode === "hidden" && !State.paused && !this.peekSuppressClosed && closedIsland(State.settings.closedIsland) === "mochi") {
       p = { cx: this.width.value / 2, cy: this.height.value / 2, diameter: CLOSED_BOT_D, opacity: 1 };
     }
     this.botCx.target = p.cx;

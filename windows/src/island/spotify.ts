@@ -20,7 +20,7 @@ export interface SpotifyHost {
   peekTrack?(pillId: string, durationMs: number): void;
 }
 
-const TRACK_PEEK_MS = 3000;
+const TRACK_PEEK_MS = 4000;
 const lastTrackKey: Record<MediaPlayerId, string | null> = { spotify: null, ytmusic: null };
 
 function trackKey(track: SpotifyState["track"]): string {

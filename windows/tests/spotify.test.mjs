@@ -309,12 +309,12 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   assert.ok(!pill.el.classList.contains("controls"));
 });
 
-test("changing tracks triggers a 3s peekTrack when playing and unpaused", () => {
+test("changing tracks triggers a 4s peekTrack when playing and unpaused", () => {
   State.mode = "compact";
   emit("spotify", playing({ track: track({ title: "Track A", artist: "Artist 1" }) }));
   island.peeks = [];
   emit("spotify", playing({ track: track({ title: "Track B", artist: "Artist 2" }) }));
-  assert.deepEqual(island.peeks, [{ pillId: SPOTIFY_ID, ms: 3000 }]);
+  assert.deepEqual(island.peeks, [{ pillId: SPOTIFY_ID, ms: 4000 }]);
 
   // Same track update (e.g. position tick) does not re-trigger peek.
   island.peeks = [];

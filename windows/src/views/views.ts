@@ -24,7 +24,7 @@ import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
-import { buildSpotifyCard, buildSpotifyPill, buildSoloMediaCard, type SpotifyPillHost } from "./spotify";
+import { buildSpotifyCard, buildSpotifyPill, buildSoloMediaCard, buildNowPlayingCard, type SpotifyPillHost } from "./spotify";
 import { isMediaPill, playerForPill } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
@@ -167,6 +167,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine, 18, { stroke: 1.6 }));
       closeBtn.style.display = State.pendingApproval ? "none" : "";
       syncPlanPills();
+      el.style.display = v === "nowPlaying" ? "none" : "";
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
@@ -882,6 +883,7 @@ export function buildViews(
   map.set("update", buildUpdate());
   map.set("whatsNew", buildWhatsNew());
   map.set("launch", buildLaunch(actions));
+  map.set("nowPlaying", buildNowPlayingCard());
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
